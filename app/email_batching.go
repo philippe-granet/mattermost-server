@@ -148,7 +148,7 @@ func (job *EmailBatchingJob) checkPendingNotifications(now time.Time, handler fu
 			} else if channelMembers, ok := result.Data.(*model.ChannelMembers); ok {
 				for _, channelMember := range *channelMembers {
 					if channelMember.LastViewedAt >= batchStartTime {
-						l4g.Info("Deleted notifications for user %s", userId)
+						l4g.Debug("Deleted notifications for user %s", userId)
 						delete(job.pendingNotifications, userId)
 						break
 					}
@@ -241,7 +241,7 @@ func (a *App) sendBatchedEmailNotification(userId string, notifications []*batch
 	body.Props["Posts"] = template.HTML(contents)
 	body.Props["BodyText"] = translateFunc("api.email_batching.send_batched_email_notification.body_text", len(notifications))
 
-	if err := utils.SendMail(user.Email, subject, body.Render()); err != nil {
+	if err := a.SendMail(user.Email, subject, body.Render()); err != nil {
 		l4g.Warn(utils.T("api.email_batchings.send_batched_email_notification.send.app_error"), user.Email, err)
 	}
 }

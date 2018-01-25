@@ -19,28 +19,30 @@ func NewStoreChannel(result store.StoreResult) store.StoreChannel {
 
 // Store can be used to provide mock stores for testing.
 type Store struct {
-	TeamStore             mocks.TeamStore
-	ChannelStore          mocks.ChannelStore
-	PostStore             mocks.PostStore
-	UserStore             mocks.UserStore
-	AuditStore            mocks.AuditStore
-	ClusterDiscoveryStore mocks.ClusterDiscoveryStore
-	ComplianceStore       mocks.ComplianceStore
-	SessionStore          mocks.SessionStore
-	OAuthStore            mocks.OAuthStore
-	SystemStore           mocks.SystemStore
-	WebhookStore          mocks.WebhookStore
-	CommandStore          mocks.CommandStore
-	CommandWebhookStore   mocks.CommandWebhookStore
-	PreferenceStore       mocks.PreferenceStore
-	LicenseStore          mocks.LicenseStore
-	TokenStore            mocks.TokenStore
-	EmojiStore            mocks.EmojiStore
-	StatusStore           mocks.StatusStore
-	FileInfoStore         mocks.FileInfoStore
-	ReactionStore         mocks.ReactionStore
-	JobStore              mocks.JobStore
-	UserAccessTokenStore  mocks.UserAccessTokenStore
+	TeamStore                 mocks.TeamStore
+	ChannelStore              mocks.ChannelStore
+	PostStore                 mocks.PostStore
+	UserStore                 mocks.UserStore
+	AuditStore                mocks.AuditStore
+	ClusterDiscoveryStore     mocks.ClusterDiscoveryStore
+	ComplianceStore           mocks.ComplianceStore
+	SessionStore              mocks.SessionStore
+	OAuthStore                mocks.OAuthStore
+	SystemStore               mocks.SystemStore
+	WebhookStore              mocks.WebhookStore
+	CommandStore              mocks.CommandStore
+	CommandWebhookStore       mocks.CommandWebhookStore
+	PreferenceStore           mocks.PreferenceStore
+	LicenseStore              mocks.LicenseStore
+	TokenStore                mocks.TokenStore
+	EmojiStore                mocks.EmojiStore
+	StatusStore               mocks.StatusStore
+	FileInfoStore             mocks.FileInfoStore
+	ReactionStore             mocks.ReactionStore
+	JobStore                  mocks.JobStore
+	UserAccessTokenStore      mocks.UserAccessTokenStore
+	PluginStore               mocks.PluginStore
+	ChannelMemberHistoryStore mocks.ChannelMemberHistoryStore
 }
 
 func (s *Store) Team() store.TeamStore                         { return &s.TeamStore }
@@ -65,12 +67,16 @@ func (s *Store) FileInfo() store.FileInfoStore                 { return &s.FileI
 func (s *Store) Reaction() store.ReactionStore                 { return &s.ReactionStore }
 func (s *Store) Job() store.JobStore                           { return &s.JobStore }
 func (s *Store) UserAccessToken() store.UserAccessTokenStore   { return &s.UserAccessTokenStore }
-func (s *Store) MarkSystemRanUnitTests()                       { /* do nothing */ }
-func (s *Store) Close()                                        { /* do nothing */ }
-func (s *Store) DropAllTables()                                { /* do nothing */ }
-func (s *Store) TotalMasterDbConnections() int                 { return 1 }
-func (s *Store) TotalReadDbConnections() int                   { return 1 }
-func (s *Store) TotalSearchDbConnections() int                 { return 1 }
+func (s *Store) Plugin() store.PluginStore                     { return &s.PluginStore }
+func (s *Store) ChannelMemberHistory() store.ChannelMemberHistoryStore {
+	return &s.ChannelMemberHistoryStore
+}
+func (s *Store) MarkSystemRanUnitTests()       { /* do nothing */ }
+func (s *Store) Close()                        { /* do nothing */ }
+func (s *Store) DropAllTables()                { /* do nothing */ }
+func (s *Store) TotalMasterDbConnections() int { return 1 }
+func (s *Store) TotalReadDbConnections() int   { return 1 }
+func (s *Store) TotalSearchDbConnections() int { return 1 }
 
 func (s *Store) AssertExpectations(t mock.TestingT) bool {
 	return mock.AssertExpectationsForObjects(t,
@@ -96,5 +102,7 @@ func (s *Store) AssertExpectations(t mock.TestingT) bool {
 		&s.ReactionStore,
 		&s.JobStore,
 		&s.UserAccessTokenStore,
+		&s.ChannelMemberHistoryStore,
+		&s.PluginStore,
 	)
 }

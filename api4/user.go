@@ -17,8 +17,6 @@ import (
 )
 
 func (api *API) InitUser() {
-	l4g.Debug(utils.T("api.user.init.debug"))
-
 	api.BaseRoutes.Users.Handle("", api.ApiHandler(createUser)).Methods("POST")
 	api.BaseRoutes.Users.Handle("", api.ApiSessionRequired(getUsers)).Methods("GET")
 	api.BaseRoutes.Users.Handle("/ids", api.ApiSessionRequired(getUsersByIds)).Methods("POST")
@@ -40,6 +38,8 @@ func (api *API) InitUser() {
 	api.BaseRoutes.Users.Handle("/email/verify", api.ApiHandler(verifyUserEmail)).Methods("POST")
 	api.BaseRoutes.Users.Handle("/email/verify/send", api.ApiHandler(sendVerificationEmail)).Methods("POST")
 
+	api.BaseRoutes.User.Handle("/auth", api.ApiSessionRequiredTrustRequester(updateUserAuth)).Methods("PUT")
+
 	api.BaseRoutes.Users.Handle("/mfa", api.ApiHandler(checkUserMfa)).Methods("POST")
 	api.BaseRoutes.User.Handle("/mfa", api.ApiSessionRequiredMfa(updateUserMfa)).Methods("PUT")
 	api.BaseRoutes.User.Handle("/mfa/generate", api.ApiSessionRequiredMfa(generateMfaSecret)).Methods("POST")
@@ -58,7 +58,9 @@ func (api *API) InitUser() {
 	api.BaseRoutes.User.Handle("/audits", api.ApiSessionRequired(getUserAudits)).Methods("GET")
 
 	api.BaseRoutes.User.Handle("/tokens", api.ApiSessionRequired(createUserAccessToken)).Methods("POST")
-	api.BaseRoutes.User.Handle("/tokens", api.ApiSessionRequired(getUserAccessTokens)).Methods("GET")
+	api.BaseRoutes.User.Handle("/tokens", api.ApiSessionRequired(getUserAccessTokensForUser)).Methods("GET")
+	api.BaseRoutes.Users.Handle("/tokens", api.ApiSessionRequired(getUserAccessTokens)).Methods("GET")
+	api.BaseRoutes.Users.Handle("/tokens/search", api.ApiSessionRequired(searchUserAccessTokens)).Methods("POST")
 	api.BaseRoutes.Users.Handle("/tokens/{token_id:[A-Za-z0-9]+}", api.ApiSessionRequired(getUserAccessToken)).Methods("GET")
 	api.BaseRoutes.Users.Handle("/tokens/revoke", api.ApiSessionRequired(revokeUserAccessToken)).Methods("POST")
 	api.BaseRoutes.Users.Handle("/tokens/disable", api.ApiSessionRequired(disableUserAccessToken)).Methods("POST")
@@ -683,11 +685,44 @@ func updateUserActive(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if ruser, err := c.App.UpdateNonSSOUserActive(c.Params.UserId, active); err != nil {
+	var user *model.User
+	var err *model.AppError
+
+	if user, err = c.App.GetUser(c.Params.UserId); err != nil {
+		c.Err = err
+		return
+	}
+
+	if _, err := c.App.UpdateActive(user, active); err != nil {
 		c.Err = err
 	} else {
-		c.LogAuditWithUserId(ruser.Id, fmt.Sprintf("active=%v", active))
+		c.LogAuditWithUserId(user.Id, fmt.Sprintf("active=%v", active))
 		ReturnStatusOK(w)
+	}
+}
+
+func updateUserAuth(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !c.IsSystemAdmin() {
+		c.SetPermissionError(model.PERMISSION_EDIT_OTHER_USERS)
+		return
+	}
+
+	c.RequireUserId()
+	if c.Err != nil {
+		return
+	}
+
+	userAuth := model.UserAuthFromJson(r.Body)
+	if userAuth == nil {
+		c.SetInvalidParam("user")
+		return
+	}
+
+	if user, err := c.App.UpdateUserAuth(c.Params.UserId, userAuth); err != nil {
+		c.Err = err
+	} else {
+		c.LogAuditWithUserId(c.Params.UserId, fmt.Sprintf("updated user auth to service=%v", user.AuthService))
+		w.Write([]byte(user.ToJson()))
 	}
 }
 
@@ -1207,7 +1242,46 @@ func createUserAccessToken(c *Context, w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(accessToken.ToJson()))
 }
 
+func searchUserAccessTokens(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !c.App.SessionHasPermissionTo(c.Session, model.PERMISSION_MANAGE_SYSTEM) {
+		c.SetPermissionError(model.PERMISSION_MANAGE_SYSTEM)
+		return
+	}
+	props := model.UserAccessTokenSearchFromJson(r.Body)
+	if props == nil {
+		c.SetInvalidParam("user_access_token_search")
+		return
+	}
+
+	if len(props.Term) == 0 {
+		c.SetInvalidParam("term")
+		return
+	}
+	accessTokens, err := c.App.SearchUserAccessTokens(props.Term)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	w.Write([]byte(model.UserAccessTokenListToJson(accessTokens)))
+}
+
 func getUserAccessTokens(c *Context, w http.ResponseWriter, r *http.Request) {
+	if !c.App.SessionHasPermissionTo(c.Session, model.PERMISSION_MANAGE_SYSTEM) {
+		c.SetPermissionError(model.PERMISSION_MANAGE_SYSTEM)
+		return
+	}
+
+	accessTokens, err := c.App.GetUserAccessTokens(c.Params.Page, c.Params.PerPage)
+	if err != nil {
+		c.Err = err
+		return
+	}
+
+	w.Write([]byte(model.UserAccessTokenListToJson(accessTokens)))
+}
+
+func getUserAccessTokensForUser(c *Context, w http.ResponseWriter, r *http.Request) {
 	c.RequireUserId()
 	if c.Err != nil {
 		return

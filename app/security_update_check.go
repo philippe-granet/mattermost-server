@@ -42,7 +42,7 @@ func (a *App) DoSecurityUpdateCheck() {
 
 				v := url.Values{}
 
-				v.Set(PROP_SECURITY_ID, utils.CfgDiagnosticId)
+				v.Set(PROP_SECURITY_ID, a.DiagnosticId())
 				v.Set(PROP_SECURITY_BUILD, model.CurrentVersion+"."+model.BuildNumber)
 				v.Set(PROP_SECURITY_ENTERPRISE_READY, model.BuildEnterpriseReady)
 				v.Set(PROP_SECURITY_DATABASE, *a.Config().SqlSettings.DriverName)
@@ -106,7 +106,7 @@ func (a *App) DoSecurityUpdateCheck() {
 
 								for _, user := range users {
 									l4g.Info(utils.T("mattermost.send_bulletin.info"), bulletin.Id, user.Email)
-									utils.SendMail(user.Email, utils.T("mattermost.bulletin.subject"), string(body))
+									a.SendMail(user.Email, utils.T("mattermost.bulletin.subject"), string(body))
 								}
 							}
 

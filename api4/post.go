@@ -8,15 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	l4g "github.com/alecthomas/log4go"
-
 	"github.com/mattermost/mattermost-server/model"
-	"github.com/mattermost/mattermost-server/utils"
 )
 
 func (api *API) InitPost() {
-	l4g.Debug(utils.T("api.post.init.debug"))
-
 	api.BaseRoutes.Posts.Handle("", api.ApiSessionRequired(createPost)).Methods("POST")
 	api.BaseRoutes.Post.Handle("", api.ApiSessionRequired(getPost)).Methods("GET")
 	api.BaseRoutes.Post.Handle("", api.ApiSessionRequired(deletePost)).Methods("DELETE")
@@ -61,7 +56,7 @@ func createPost(c *Context, w http.ResponseWriter, r *http.Request) {
 		post.CreateAt = 0
 	}
 
-	rp, err := c.App.CreatePostAsUser(post)
+	rp, err := c.App.CreatePostAsUser(c.App.PostWithProxyRemovedFromImageURLs(post))
 	if err != nil {
 		c.Err = err
 		return
@@ -71,7 +66,7 @@ func createPost(c *Context, w http.ResponseWriter, r *http.Request) {
 	c.App.UpdateLastActivityAtIfNeeded(c.Session)
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(rp.ToJson()))
+	w.Write([]byte(c.App.PostWithProxyAddedToImageURLs(rp).ToJson()))
 }
 
 func getPostsForChannel(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -140,7 +135,7 @@ func getPostsForChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 	if len(etag) > 0 {
 		w.Header().Set(model.HEADER_ETAG_SERVER, etag)
 	}
-	w.Write([]byte(list.ToJson()))
+	w.Write([]byte(c.App.PostListWithProxyAddedToImageURLs(list).ToJson()))
 }
 
 func getFlaggedPostsForUser(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -173,7 +168,7 @@ func getFlaggedPostsForUser(c *Context, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	w.Write([]byte(posts.ToJson()))
+	w.Write([]byte(c.App.PostListWithProxyAddedToImageURLs(posts).ToJson()))
 }
 
 func getPost(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -211,7 +206,7 @@ func getPost(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		w.Header().Set(model.HEADER_ETAG_SERVER, post.Etag())
-		w.Write([]byte(post.ToJson()))
+		w.Write([]byte(c.App.PostWithProxyAddedToImageURLs(post).ToJson()))
 	}
 }
 
@@ -277,7 +272,7 @@ func getPostThread(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		w.Header().Set(model.HEADER_ETAG_SERVER, list.Etag())
-		w.Write([]byte(list.ToJson()))
+		w.Write([]byte(c.App.PostListWithProxyAddedToImageURLs(list).ToJson()))
 	}
 }
 
@@ -318,7 +313,7 @@ func searchPosts(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	w.Write([]byte(posts.ToJson()))
+	w.Write([]byte(c.App.PostListWithProxyAddedToImageURLs(posts).ToJson()))
 }
 
 func updatePost(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -346,13 +341,13 @@ func updatePost(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	post.Id = c.Params.PostId
 
-	rpost, err := c.App.UpdatePost(post, false)
+	rpost, err := c.App.UpdatePost(c.App.PostWithProxyRemovedFromImageURLs(post), false)
 	if err != nil {
 		c.Err = err
 		return
 	}
 
-	w.Write([]byte(rpost.ToJson()))
+	w.Write([]byte(c.App.PostWithProxyAddedToImageURLs(rpost).ToJson()))
 }
 
 func patchPost(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -378,13 +373,13 @@ func patchPost(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patchedPost, err := c.App.PatchPost(c.Params.PostId, post)
+	patchedPost, err := c.App.PatchPost(c.Params.PostId, c.App.PostPatchWithProxyRemovedFromImageURLs(post))
 	if err != nil {
 		c.Err = err
 		return
 	}
 
-	w.Write([]byte(patchedPost.ToJson()))
+	w.Write([]byte(c.App.PostWithProxyAddedToImageURLs(patchedPost).ToJson()))
 }
 
 func saveIsPinnedPost(c *Context, w http.ResponseWriter, r *http.Request, isPinned bool) {

@@ -7,20 +7,22 @@ import (
 	"net/http"
 	"strings"
 
-	l4g "github.com/alecthomas/log4go"
-
 	"github.com/mattermost/mattermost-server/app"
 	"github.com/mattermost/mattermost-server/model"
-	"github.com/mattermost/mattermost-server/utils"
+)
+
+const (
+	EMOJI_MAX_AUTOCOMPLETE_ITEMS = 100
 )
 
 func (api *API) InitEmoji() {
-	l4g.Debug(utils.T("api.emoji.init.debug"))
-
 	api.BaseRoutes.Emojis.Handle("", api.ApiSessionRequired(createEmoji)).Methods("POST")
 	api.BaseRoutes.Emojis.Handle("", api.ApiSessionRequired(getEmojiList)).Methods("GET")
+	api.BaseRoutes.Emojis.Handle("/search", api.ApiSessionRequired(searchEmojis)).Methods("POST")
+	api.BaseRoutes.Emojis.Handle("/autocomplete", api.ApiSessionRequired(autocompleteEmojis)).Methods("GET")
 	api.BaseRoutes.Emoji.Handle("", api.ApiSessionRequired(deleteEmoji)).Methods("DELETE")
 	api.BaseRoutes.Emoji.Handle("", api.ApiSessionRequired(getEmoji)).Methods("GET")
+	api.BaseRoutes.EmojiByName.Handle("", api.ApiSessionRequired(getEmojiByName)).Methods("GET")
 	api.BaseRoutes.Emoji.Handle("/image", api.ApiSessionRequiredTrustRequester(getEmojiImage)).Methods("GET")
 }
 
@@ -80,7 +82,13 @@ func getEmojiList(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	listEmoji, err := c.App.GetEmojiList(c.Params.Page, c.Params.PerPage)
+	sort := r.URL.Query().Get("sort")
+	if sort != "" && sort != model.EMOJI_SORT_BY_NAME {
+		c.SetInvalidUrlParam("sort")
+		return
+	}
+
+	listEmoji, err := c.App.GetEmojiList(c.Params.Page, c.Params.PerPage, sort)
 	if err != nil {
 		c.Err = err
 		return
@@ -135,6 +143,21 @@ func getEmoji(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getEmojiByName(c *Context, w http.ResponseWriter, r *http.Request) {
+	c.RequireEmojiName()
+	if c.Err != nil {
+		return
+	}
+
+	emoji, err := c.App.GetEmojiByName(c.Params.EmojiName)
+	if err != nil {
+		c.Err = err
+		return
+	} else {
+		w.Write([]byte(emoji.ToJson()))
+	}
+}
+
 func getEmojiImage(c *Context, w http.ResponseWriter, r *http.Request) {
 	c.RequireEmojiId()
 	if c.Err != nil {
@@ -160,4 +183,42 @@ func getEmojiImage(c *Context, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/"+imageType)
 	w.Header().Set("Cache-Control", "max-age=2592000, public")
 	w.Write(image)
+}
+
+func searchEmojis(c *Context, w http.ResponseWriter, r *http.Request) {
+	emojiSearch := model.EmojiSearchFromJson(r.Body)
+	if emojiSearch == nil {
+		c.SetInvalidParam("term")
+		return
+	}
+
+	if emojiSearch.Term == "" {
+		c.SetInvalidParam("term")
+		return
+	}
+
+	emojis, err := c.App.SearchEmoji(emojiSearch.Term, emojiSearch.PrefixOnly, PER_PAGE_MAXIMUM)
+	if err != nil {
+		c.Err = err
+		return
+	} else {
+		w.Write([]byte(model.EmojiListToJson(emojis)))
+	}
+}
+
+func autocompleteEmojis(c *Context, w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+
+	if name == "" {
+		c.SetInvalidUrlParam("name")
+		return
+	}
+
+	emojis, err := c.App.SearchEmoji(name, true, EMOJI_MAX_AUTOCOMPLETE_ITEMS)
+	if err != nil {
+		c.Err = err
+		return
+	} else {
+		w.Write([]byte(model.EmojiListToJson(emojis)))
+	}
 }

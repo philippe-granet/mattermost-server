@@ -16,8 +16,6 @@ import (
 )
 
 func (api *API) InitSystem() {
-	l4g.Debug(utils.T("api.system.init.debug"))
-
 	api.BaseRoutes.System.Handle("/ping", api.ApiHandler(getSystemPing)).Methods("GET")
 
 	api.BaseRoutes.ApiRoot.Handle("/config", api.ApiSessionRequired(getConfig)).Methods("GET")
@@ -187,7 +185,7 @@ func getLogs(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lines, err := c.App.GetLogs(c.Params.Page, c.Params.PerPage)
+	lines, err := c.App.GetLogs(c.Params.Page, c.Params.LogsPerPage)
 	if err != nil {
 		c.Err = err
 		return
@@ -246,7 +244,7 @@ func getClientConfig(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	respCfg := map[string]string{}
-	for k, v := range utils.ClientCfg {
+	for k, v := range c.App.ClientConfig() {
 		respCfg[k] = v
 	}
 

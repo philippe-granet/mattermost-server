@@ -6,33 +6,37 @@ package utils
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestMailConnection(t *testing.T) {
-	LoadGlobalConfig("config.json")
+	cfg, _, err := LoadConfig("config.json")
+	require.Nil(t, err)
 
-	if conn, err := connectToSMTPServer(Cfg); err != nil {
+	if conn, err := connectToSMTPServer(cfg); err != nil {
 		t.Log(err)
 		t.Fatal("Should connect to the STMP Server")
 	} else {
-		if _, err1 := newSMTPClient(conn, Cfg); err1 != nil {
+		if _, err1 := newSMTPClient(conn, cfg); err1 != nil {
 			t.Log(err)
 			t.Fatal("Should get new smtp client")
 		}
 	}
 
-	Cfg.EmailSettings.SMTPServer = "wrongServer"
-	Cfg.EmailSettings.SMTPPort = "553"
+	cfg.EmailSettings.SMTPServer = "wrongServer"
+	cfg.EmailSettings.SMTPPort = "553"
 
-	if _, err := connectToSMTPServer(Cfg); err == nil {
+	if _, err := connectToSMTPServer(cfg); err == nil {
 		t.Log(err)
 		t.Fatal("Should not to the STMP Server")
 	}
 
 }
 
-func TestSendMail(t *testing.T) {
-	LoadGlobalConfig("config.json")
+func TestSendMailUsingConfig(t *testing.T) {
+	cfg, _, err := LoadConfig("config.json")
+	require.Nil(t, err)
 	T = GetUserTranslations("en")
 
 	var emailTo string = "test@example.com"
@@ -42,7 +46,7 @@ func TestSendMail(t *testing.T) {
 	//Delete all the messages before check the sample email
 	DeleteMailBox(emailTo)
 
-	if err := SendMail(emailTo, emailSubject, emailBody); err != nil {
+	if err := SendMailUsingConfig(emailTo, emailSubject, emailBody, cfg); err != nil {
 		t.Log(err)
 		t.Fatal("Should connect to the STMP Server")
 	} else {

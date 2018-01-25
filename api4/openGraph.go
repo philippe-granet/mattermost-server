@@ -6,8 +6,6 @@ package api4
 import (
 	"net/http"
 
-	l4g "github.com/alecthomas/log4go"
-	"github.com/mattermost/mattermost-server/app"
 	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/utils"
 )
@@ -17,8 +15,6 @@ const OPEN_GRAPH_METADATA_CACHE_SIZE = 10000
 var openGraphDataCache = utils.NewLru(OPEN_GRAPH_METADATA_CACHE_SIZE)
 
 func (api *API) InitOpenGraph() {
-	l4g.Debug(utils.T("api.opengraph.init.debug"))
-
 	api.BaseRoutes.OpenGraph.Handle("", api.ApiSessionRequired(getOpenGraphMetadata)).Methods("POST")
 }
 
@@ -43,7 +39,7 @@ func getOpenGraphMetadata(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	og := app.GetOpenGraphMetadata(url)
+	og := c.App.GetOpenGraphMetadata(url)
 
 	ogJSON, err := og.ToJSON()
 	openGraphDataCache.AddWithExpiresInSecs(props["url"], ogJSON, 3600) // Cache would expire after 1 hour

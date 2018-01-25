@@ -649,7 +649,7 @@
   },
   {
     "id": "api.command_dnd.name",
-    "translation": "dnd"
+    "translation": "не беспокоить"
   },
   {
     "id": "api.command_dnd.success",
@@ -698,6 +698,57 @@
   {
     "id": "api.command_expand_collapse.fail.app_error",
     "translation": "Произошла ошибка при открытии превью"
+  },
+  {
+    "id": "api.command_groupmsg.desc",
+    "translation": "Отправить групповое сообщение указанным пользователям"
+  },
+  {
+    "id": "api.command_groupmsg.fail.app_error",
+    "translation": "Произошла ошибка при передаче сообщения пользователям."
+  },
+  {
+    "id": "api.command_groupmsg.group_fail.app_error",
+    "translation": "При создании группового сообщения произошла ошибка."
+  },
+  {
+    "id": "api.command_groupmsg.hint",
+    "translation": "@[имя_пользователя1],@[имя_пользователя2] 'сообщение' "
+  },
+  {
+    "id": "api.command_groupmsg.invalid_user.app_error",
+    "translation": {
+      "one": "Мы не смогли найти пользователя: {{.Users}}Мы не смогли найти пользователей: {{.Users}}",
+      "other": ""
+    }
+  },
+  {
+    "id": "api.command_groupmsg.invalid_users.app_error",
+    "translation": "Мы не смогли найти пользователей: %s"
+  },
+  {
+    "id": "api.command_groupmsg.list.app_error",
+    "translation": "Произошла ошибка при составлении списка пользователей."
+  },
+  {
+    "id": "api.command_groupmsg.max_users.app_error",
+    "translation": "Максимальное количество получателей групповых сообщений ограничено  {{.MaxUsers}} пользователями."
+  },
+  {
+    "id": "api.command_groupmsg.min_users.app_error",
+    "translation": "Максимальное количество получателей групповых сообщений ограничено  {{.MaxUsers}} пользователями."
+  },
+  {
+    "id": "api.command_groupmsg.missing.app_error",
+    "translation": "Мы не смогли найти пользователя"
+  },
+  {
+    "id": "api.command_groupmsg.name",
+    "translation": "сообщение"
+  },
+  {
+    "id": "api.command_groupmsg.success",
+    "translation": "Коммуницируемый пользователь."
   },
   {
     "id": "api.command_help.desc",
@@ -1282,6 +1333,10 @@
     "translation": "Хранилище файлов не настроено. Пожалуйста, настройте S3 или локальное серверное файловое хранилище."
   },
   {
+    "id": "api.file.move_file.copy_within_s3.app_error",
+    "translation": "Невозможно скопировать файл в пределах S3"
+  },
+  {
     "id": "api.file.move_file.delete_from_s3.app_error",
     "translation": "Невозможно удалить файл из S3."
   },
@@ -1366,8 +1421,12 @@
     "translation": "Не удалось проверить адрес электронной почты err=%v"
   },
   {
-    "id": "api.incoming_webhook.disabled.app_errror",
+    "id": "api.incoming_webhook.disabled.app_error",
     "translation": "Входящие вебхуки были отключены системным администратором."
+  },
+  {
+    "id": "api.incoming_webhook.invalid_username.app_error",
+    "translation": "Неверное имя пользователя"
   },
   {
     "id": "api.ldap.init.debug",
@@ -1583,11 +1642,11 @@
   },
   {
     "id": "api.post.check_for_out_of_channel_mentions.message.multiple",
-    "translation": "@{{.Usernames}} and @{{.LastUsername}} were mentioned but they are not in the channel. Would you like to {{.Phrase}}? They will have access to all message history."
+    "translation": "{{.Usernames}} и @{{.LastUsername}} были упомянуты, но сейчас не в канале. Не хотели бы Вы {{.Phrase}}? Они получат доступ ко всем историческим сообщениям."
   },
   {
     "id": "api.post.check_for_out_of_channel_mentions.message.one",
-    "translation": "@{{.Username}} was mentioned but they are not in the channel. Would you like to {{.Phrase}}? They will have access to all message history."
+    "translation": "{{.Usernames}} и @{{.LastUsername}} были упомянуты, но сейчас не в канале. Не хотели бы Вы {{.Phrase}}? Они получат доступ ко всем историческим сообщениям."
   },
   {
     "id": "api.post.create_post.attach_files.error",
@@ -2116,6 +2175,10 @@
     "translation": "Количество запущенных goroutines больше, чем порог стабильной работы %v из %v"
   },
   {
+    "id": "api.team.add_user_to_team.added",
+    "translation": "%v добавлен(а) в команду пользователем %v"
+  },
+  {
     "id": "api.team.add_user_to_team.missing_parameter.app_error",
     "translation": "Для добавления пользователя в команду требуется указать параметр."
   },
@@ -2165,7 +2228,7 @@
   },
   {
     "id": "api.team.import_team.no_import_from.app_error",
-    "translation": "Неправильный запрос: отсутствует поле \"filesize\"."
+    "translation": "Неправильный запрос: отсутствует поле \"importFrom\"."
   },
   {
     "id": "api.team.import_team.open.app_error",
@@ -2228,6 +2291,14 @@
     "translation": "E-mail должен принадлежать реальному домену (например @example.com). Пожалуйста, обратитесь к системному администратору за дополнительной информацией."
   },
   {
+    "id": "api.team.join_team.post_and_forget",
+    "translation": "%v присоединился(-лась) к команде."
+  },
+  {
+    "id": "api.team.leave.left",
+    "translation": "%v покинул(а) команду."
+  },
+  {
     "id": "api.team.permanent_delete_team.attempting.warn",
     "translation": "Попытка безвозвратно удалить команду %v id=%v"
   },
@@ -2238,6 +2309,10 @@
   {
     "id": "api.team.remove_user_from_team.missing.app_error",
     "translation": "Пользователь неактивен для участия в этой команде."
+  },
+  {
+    "id": "api.team.remove_user_from_team.removed",
+    "translation": "%v удален из канала."
   },
   {
     "id": "api.team.signup_team.email_disabled.app_error",
@@ -3524,12 +3599,24 @@
     "translation": "Не удалось получить активные плагины"
   },
   {
+    "id": "app.plugin.id_length.app_error",
+    "translation": "Plugin Id must be less than {{.Max}} characters."
+  },
+  {
+    "id": "app.plugin.install.app_error",
+    "translation": "Unable to install plugin."
+  },
+  {
+    "id": "app.plugin.install_id.app_error",
+    "translation": "Unable to install plugin. A plugin with the same ID is already installed."
+  },
+  {
     "id": "app.plugin.manifest.app_error",
     "translation": "Unable to find manifest for extracted plugin"
   },
   {
     "id": "app.plugin.mvdir.app_error",
-    "translation": "Unable to move plugin from temporary directory to final destination"
+    "translation": "Unable to move plugin from temporary directory to final destination. Another plugin may be using the same directory name."
   },
   {
     "id": "app.plugin.not_installed.app_error",
@@ -3864,8 +3951,16 @@
     "translation": "Failed to create Elasticsearch bulk processor"
   },
   {
+    "id": "ent.elasticsearch.start.create_bulk_processor_failed.app_error",
+    "translation": "Failed to create Elasticsearch bulk processor"
+  },
+  {
     "id": "ent.elasticsearch.start.index_settings_failed",
     "translation": "Не удалось создать индекс Elasticsearch"
+  },
+  {
+    "id": "ent.elasticsearch.start.start_bulk_processor_failed.app_error",
+    "translation": "Failed to start Elasticsearch bulk processor"
   },
   {
     "id": "ent.elasticsearch.start.start_bulk_processor_failed.app_error",
@@ -3958,6 +4053,10 @@
   {
     "id": "ent.ldap.validate_filter.app_error",
     "translation": "Неверный фильтр AD/LDAP"
+  },
+  {
+    "id": "ent.message_export.generic.license.error",
+    "translation": "License does not support Message Export."
   },
   {
     "id": "ent.metrics.starting.info",
@@ -4296,6 +4395,26 @@
     "translation": "Неверный id пользователя"
   },
   {
+    "id": "model.channel_member_history.is_valid.channel_id.app_error",
+    "translation": "Недопустимый идентификатор канала"
+  },
+  {
+    "id": "model.channel_member_history.is_valid.join_time.app_error",
+    "translation": "Некорректный job type"
+  },
+  {
+    "id": "model.channel_member_history.is_valid.leave_time.app_error",
+    "translation": "Invalid leave time"
+  },
+  {
+    "id": "model.channel_member_history.is_valid.user_email.app_error",
+    "translation": "Недопустимый идентификатор пользователя"
+  },
+  {
+    "id": "model.channel_member_history.is_valid.user_id.app_error",
+    "translation": "Недопустимый идентификатор пользователя"
+  },
+  {
     "id": "model.client.connecting.app_error",
     "translation": "Мы обнаружили ошибку при подключении к серверу"
   },
@@ -4373,7 +4492,7 @@
   },
   {
     "id": "model.command.is_valid.display_name.app_error",
-    "translation": "Недопустимое имя для отображения"
+    "translation": "Недопустимый тип"
   },
   {
     "id": "model.command.is_valid.id.app_error",
@@ -4664,6 +4783,30 @@
     "translation": "Неверное максимальное количество пользователей на команду в настройках команд. Число должно быть положительным."
   },
   {
+    "id": "model.config.is_valid.message_export.batch_size.app_error",
+    "translation": "Message export job BatchSize must be a positive integer"
+  },
+  {
+    "id": "model.config.is_valid.message_export.daily_runtime.app_error",
+    "translation": "Message export job DailyRuntime must be a 24-hour time stamp in the form HH:MM."
+  },
+  {
+    "id": "model.config.is_valid.message_export.enable.app_error",
+    "translation": "Message export job EnableExport setting must be either true or false"
+  },
+  {
+    "id": "model.config.is_valid.message_export.export_from.app_error",
+    "translation": "Message export job ExportFromTimestamp must be a timestamp (expressed in seconds since unix epoch). Only messages sent after this timestamp will be exported."
+  },
+  {
+    "id": "model.config.is_valid.message_export.file_location.app_error",
+    "translation": "Message export job FileLocation must be a writable directory that export data will be written to"
+  },
+  {
+    "id": "model.config.is_valid.message_export.file_location.relative",
+    "translation": "Message export job FileLocation must be a sub-directory of FileSettings.Directory"
+  },
+  {
     "id": "model.config.is_valid.password_length.app_error",
     "translation": "Минимальная длина пароля должна быть целым числом большим или равным {{.MinLength}}, а также меньшим или равным {{.MaxLength}}."
   },
@@ -4833,7 +4976,11 @@
   },
   {
     "id": "model.incoming_hook.display_name.app_error",
-    "translation": "Некорректное имя"
+    "translation": "Недопустимый тип"
+  },
+  {
+    "id": "model.incoming_hook.icon_url.app_error",
+    "translation": "Неверный идентификатор сообщения"
   },
   {
     "id": "model.incoming_hook.id.app_error",
@@ -4850,6 +4997,10 @@
   {
     "id": "model.incoming_hook.user_id.app_error",
     "translation": "Некорректный идентификатор пользователя"
+  },
+  {
+    "id": "model.incoming_hook.username.app_error",
+    "translation": "Неверное имя пользователя"
   },
   {
     "id": "model.job.is_valid.create_at.app_error",
@@ -4925,7 +5076,7 @@
   },
   {
     "id": "model.outgoing_hook.is_valid.display_name.app_error",
-    "translation": "Некорректное имя"
+    "translation": "Недопустимый тип"
   },
   {
     "id": "model.outgoing_hook.is_valid.id.app_error",
@@ -4958,6 +5109,26 @@
   {
     "id": "model.outgoing_hook.is_valid.words.app_error",
     "translation": "Некорректный триггер слов"
+  },
+  {
+    "id": "model.plugin_command.error.app_error",
+    "translation": "An error occurred while trying to execute this command."
+  },
+  {
+    "id": "model.plugin_key_value.is_valid.key.app_error",
+    "translation": "Invalid key, must be more than {{.Min}} and a of maximum {{.Max}} characters long."
+  },
+  {
+    "id": "model.plugin_key_value.is_valid.key.app_error",
+    "translation": "Invalid key, must be more than {{.Min}} and a of maximum {{.Max}} characters long."
+  },
+  {
+    "id": "model.plugin_key_value.is_valid.plugin_id.app_error",
+    "translation": "Invalid plugin ID, must be more than {{.Min}} and a of maximum {{.Max}} characters long."
+  },
+  {
+    "id": "model.plugin_key_value.is_valid.plugin_id.app_error",
+    "translation": "Invalid plugin ID, must be more than {{.Min}} and a of maximum {{.Max}} characters long."
   },
   {
     "id": "model.post.is_valid.channel_id.app_error",
@@ -5656,6 +5827,34 @@
     "translation": "Возникла ошибка при обновлении участника канала"
   },
   {
+    "id": "store.sql_channel_member_history.get_all.app_error",
+    "translation": "Failed to get records"
+  },
+  {
+    "id": "store.sql_channel_member_history.get_users_in_channel_at.app_error",
+    "translation": "Failed to get users in channel at specified time"
+  },
+  {
+    "id": "store.sql_channel_member_history.get_users_in_channel_during.app_error",
+    "translation": "Failed to get users in channel during specified time period"
+  },
+  {
+    "id": "store.sql_channel_member_history.log_join_event.app_error",
+    "translation": "Failed to record channel member history"
+  },
+  {
+    "id": "store.sql_channel_member_history.log_leave_event.select_error",
+    "translation": "Failed to record channel member history. No existing join record found"
+  },
+  {
+    "id": "store.sql_channel_member_history.log_leave_event.update_error",
+    "translation": "Failed to record channel member history. Failed to update existing join record"
+  },
+  {
+    "id": "store.sql_channel_member_history.permanent_delete_batch.app_error",
+    "translation": "Failed to purge records"
+  },
+  {
     "id": "store.sql_command.analytics_command_count.app_error",
     "translation": "Не удалось подсчитать команды"
   },
@@ -5714,6 +5913,10 @@
   {
     "id": "store.sql_compliance.get.finding.app_error",
     "translation": "Возникла ошибка с получением комплаенс-отчетов"
+  },
+  {
+    "id": "store.sql_compliance.message_export.app_error",
+    "translation": "Failed to select message export data"
   },
   {
     "id": "store.sql_compliance.save.saving.app_error",
@@ -5918,6 +6121,22 @@
   {
     "id": "store.sql_oauth.update_app.updating.app_error",
     "translation": "Возникла ошибка обновления приложения"
+  },
+  {
+    "id": "store.sql_plugin_store.delete.app_error",
+    "translation": "Could not delete plugin key value"
+  },
+  {
+    "id": "store.sql_plugin_store.get.app_error",
+    "translation": "Could not get plugin key value"
+  },
+  {
+    "id": "store.sql_plugin_store.save.app_error",
+    "translation": "Could not save or update plugin key value"
+  },
+  {
+    "id": "store.sql_plugin_store.save_unique.app_error",
+    "translation": "Could not save or update plugin key value due to unique constraint violation"
   },
   {
     "id": "store.sql_post.analytics_posts_count.app_error",

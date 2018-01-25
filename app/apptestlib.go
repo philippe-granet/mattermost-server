@@ -4,15 +4,22 @@
 package app
 
 import (
+	"encoding/json"
+	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"time"
 
+	l4g "github.com/alecthomas/log4go"
+
 	"github.com/mattermost/mattermost-server/model"
+	"github.com/mattermost/mattermost-server/plugin"
+	"github.com/mattermost/mattermost-server/plugin/pluginenv"
 	"github.com/mattermost/mattermost-server/store"
 	"github.com/mattermost/mattermost-server/store/sqlstore"
 	"github.com/mattermost/mattermost-server/store/storetest"
 	"github.com/mattermost/mattermost-server/utils"
-
-	l4g "github.com/alecthomas/log4go"
 )
 
 type TestHelper struct {
@@ -22,6 +29,10 @@ type TestHelper struct {
 	BasicUser2   *model.User
 	BasicChannel *model.Channel
 	BasicPost    *model.Post
+
+	tempConfigPath string
+	tempWorkspace  string
+	pluginHooks    map[string]plugin.Hooks
 }
 
 type persistentTestStore struct {
@@ -48,25 +59,45 @@ func StopTestStore() {
 }
 
 func setupTestHelper(enterprise bool) *TestHelper {
-	var options []Option
+	permConfig, err := os.Open(utils.FindConfigFile("config.json"))
+	if err != nil {
+		panic(err)
+	}
+	defer permConfig.Close()
+	tempConfig, err := ioutil.TempFile("", "")
+	if err != nil {
+		panic(err)
+	}
+	_, err = io.Copy(tempConfig, permConfig)
+	tempConfig.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	options := []Option{ConfigFile(tempConfig.Name()), DisableConfigWatch}
 	if testStore != nil {
 		options = append(options, StoreOverride(testStore))
 	}
 
+	a, err := New(options...)
+	if err != nil {
+		panic(err)
+	}
+
 	th := &TestHelper{
-		App: New(options...),
+		App:            a,
+		pluginHooks:    make(map[string]plugin.Hooks),
+		tempConfigPath: tempConfig.Name(),
 	}
 
 	th.App.UpdateConfig(func(cfg *model.Config) { *cfg.TeamSettings.MaxUsersPerTeam = 50 })
 	th.App.UpdateConfig(func(cfg *model.Config) { *cfg.RateLimitSettings.Enable = false })
-	utils.DisableDebugLogForTest()
 	prevListenAddress := *th.App.Config().ServiceSettings.ListenAddress
 	if testStore != nil {
 		th.App.UpdateConfig(func(cfg *model.Config) { *cfg.ServiceSettings.ListenAddress = ":0" })
 	}
 	th.App.StartServer()
 	th.App.UpdateConfig(func(cfg *model.Config) { *cfg.ServiceSettings.ListenAddress = prevListenAddress })
-	utils.EnableDebugLogForTest()
 	th.App.Srv.Store.MarkSystemRanUnitTests()
 
 	th.App.UpdateConfig(func(cfg *model.Config) { *cfg.TeamSettings.EnableOpenServer = true })
@@ -219,8 +250,66 @@ func (me *TestHelper) LinkUserToTeam(user *model.User, team *model.Team) {
 
 func (me *TestHelper) TearDown() {
 	me.App.Shutdown()
+	os.Remove(me.tempConfigPath)
 	if err := recover(); err != nil {
 		StopTestStore()
+		panic(err)
+	}
+	if me.tempWorkspace != "" {
+		os.RemoveAll(me.tempWorkspace)
+	}
+}
+
+type mockPluginSupervisor struct {
+	hooks plugin.Hooks
+}
+
+func (s *mockPluginSupervisor) Start(api plugin.API) error {
+	return s.hooks.OnActivate(api)
+}
+
+func (s *mockPluginSupervisor) Stop() error {
+	return nil
+}
+
+func (s *mockPluginSupervisor) Hooks() plugin.Hooks {
+	return s.hooks
+}
+
+func (me *TestHelper) InstallPlugin(manifest *model.Manifest, hooks plugin.Hooks) {
+	if me.tempWorkspace == "" {
+		dir, err := ioutil.TempDir("", "apptest")
+		if err != nil {
+			panic(err)
+		}
+		me.tempWorkspace = dir
+	}
+
+	pluginDir := filepath.Join(me.tempWorkspace, "plugins")
+	webappDir := filepath.Join(me.tempWorkspace, "webapp")
+	me.App.InitPlugins(pluginDir, webappDir, func(bundle *model.BundleInfo) (plugin.Supervisor, error) {
+		if hooks, ok := me.pluginHooks[bundle.Manifest.Id]; ok {
+			return &mockPluginSupervisor{hooks}, nil
+		}
+		return pluginenv.DefaultSupervisorProvider(bundle)
+	})
+
+	me.pluginHooks[manifest.Id] = hooks
+
+	manifestCopy := *manifest
+	if manifestCopy.Backend == nil {
+		manifestCopy.Backend = &model.ManifestBackend{}
+	}
+	manifestBytes, err := json.Marshal(&manifestCopy)
+	if err != nil {
+		panic(err)
+	}
+
+	if err := os.MkdirAll(filepath.Join(pluginDir, manifest.Id), 0700); err != nil {
+		panic(err)
+	}
+
+	if err := ioutil.WriteFile(filepath.Join(pluginDir, manifest.Id, "plugin.json"), manifestBytes, 0600); err != nil {
 		panic(err)
 	}
 }

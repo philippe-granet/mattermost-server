@@ -700,6 +700,57 @@
     "translation": "Um erro ocorreu ao expandir as visualizações"
   },
   {
+    "id": "api.command_groupmsg.desc",
+    "translation": "Envia uma mensagem de grupo para os usuários especificados"
+  },
+  {
+    "id": "api.command_groupmsg.fail.app_error",
+    "translation": "Um erro ocorreu durante o envio da mensagem aos usuários."
+  },
+  {
+    "id": "api.command_groupmsg.group_fail.app_error",
+    "translation": "Um erro ocorreu durante a criação do grupo de mensagens."
+  },
+  {
+    "id": "api.command_groupmsg.hint",
+    "translation": "@[username1],@[username2] 'mensagem'"
+  },
+  {
+    "id": "api.command_groupmsg.invalid_user.app_error",
+    "translation": {
+      "one": "Não foi possível encontrar o usuário: {{.Users}}",
+      "other": "Não foi possível encontrar os usuários: {{.Users}}"
+    }
+  },
+  {
+    "id": "api.command_groupmsg.invalid_users.app_error",
+    "translation": "Não foi possível encontrar os usuários: %s"
+  },
+  {
+    "id": "api.command_groupmsg.list.app_error",
+    "translation": "Ocorreu um erro durante a listagem de usuários."
+  },
+  {
+    "id": "api.command_groupmsg.max_users.app_error",
+    "translation": "Mensagem em grupo está limitada a um máximo de {{.MinUsers}} usuários."
+  },
+  {
+    "id": "api.command_groupmsg.min_users.app_error",
+    "translation": "Mensagem em grupo está limitada a um mínimo de {{.MinUsers}} usuários."
+  },
+  {
+    "id": "api.command_groupmsg.missing.app_error",
+    "translation": "Não foi possível encontrar o usuário"
+  },
+  {
+    "id": "api.command_groupmsg.name",
+    "translation": "mensagem"
+  },
+  {
+    "id": "api.command_groupmsg.success",
+    "translation": "Mensagem enviada."
+  },
+  {
     "id": "api.command_help.desc",
     "translation": "Abrir a página de ajuda do Mattermost"
   },
@@ -1282,6 +1333,10 @@
     "translation": "O armazenamento de arquivos não está configurado corretamente. Por favor, configure o S3 ou o armazenamento de arquivos no servidor local."
   },
   {
+    "id": "api.file.move_file.copy_within_s3.app_error",
+    "translation": "Não foi possível copiar o arquivo dentro do S3."
+  },
+  {
     "id": "api.file.move_file.delete_from_s3.app_error",
     "translation": "Não é possível deletar o arquivo a partir do S3."
   },
@@ -1366,8 +1421,12 @@
     "translation": "Não foi possível definir email verificado err=%v"
   },
   {
-    "id": "api.incoming_webhook.disabled.app_errror",
+    "id": "api.incoming_webhook.disabled.app_error",
     "translation": "Webhooks de entrada foram desabilitados pelo administrador do sistema."
+  },
+  {
+    "id": "api.incoming_webhook.invalid_username.app_error",
+    "translation": "Nome do usuário inválido"
   },
   {
     "id": "api.ldap.init.debug",
@@ -2116,6 +2175,10 @@
     "translation": "O número de goroutines rodando é maior que o limite configurado %v de %v"
   },
   {
+    "id": "api.team.add_user_to_team.added",
+    "translation": "%v adicionado a equipe por %v"
+  },
+  {
     "id": "api.team.add_user_to_team.missing_parameter.app_error",
     "translation": "Parâmetro requerido para adicionar o usuário ao time."
   },
@@ -2228,6 +2291,14 @@
     "translation": "Email precisa ser de um domínio específico (ex. @example.com). Por favor pergunte ao administrador do sistema por detalhes."
   },
   {
+    "id": "api.team.join_team.post_and_forget",
+    "translation": "%v entrou na equipe."
+  },
+  {
+    "id": "api.team.leave.left",
+    "translation": "%v deixou a equipe."
+  },
+  {
     "id": "api.team.permanent_delete_team.attempting.warn",
     "translation": "Tentando permanentemente deletar a equipe %v id=%v"
   },
@@ -2238,6 +2309,10 @@
   {
     "id": "api.team.remove_user_from_team.missing.app_error",
     "translation": "O usuário não parece ser parte desta equipe."
+  },
+  {
+    "id": "api.team.remove_user_from_team.removed",
+    "translation": "%v foi removido da equipe."
   },
   {
     "id": "api.team.signup_team.email_disabled.app_error",
@@ -3524,12 +3599,24 @@
     "translation": "Não é possível obter os plugins ativos"
   },
   {
+    "id": "app.plugin.id_length.app_error",
+    "translation": "Id do plugin deve ter menos de {{.Max}} caracteres."
+  },
+  {
+    "id": "app.plugin.install.app_error",
+    "translation": "Não foi possível instalar o plugin."
+  },
+  {
+    "id": "app.plugin.install_id.app_error",
+    "translation": "Não foi possível instalar o plugin. Um plugin como o mesmo ID já está instalado."
+  },
+  {
     "id": "app.plugin.manifest.app_error",
     "translation": "Não foi possível encontrar o manifesto para o plugin extraído"
   },
   {
     "id": "app.plugin.mvdir.app_error",
-    "translation": "Não foi possível mover o plugin da pasta temporária para o destino final"
+    "translation": "Não foi possível mover o plugin to diretório temporário para o seu destino final. Outro plugin pode estar utilizando o menos nome de diretório."
   },
   {
     "id": "app.plugin.not_installed.app_error",
@@ -3864,8 +3951,16 @@
     "translation": "Erro ao criar o bulk processor do Elastisearch"
   },
   {
+    "id": "ent.elasticsearch.start.create_bulk_processor_failed.app_error",
+    "translation": "Erro ao criar o bulk processor do Elastisearch"
+  },
+  {
     "id": "ent.elasticsearch.start.index_settings_failed",
     "translation": "Não foi possível configurar as opções do ElasticSearch index"
+  },
+  {
+    "id": "ent.elasticsearch.start.start_bulk_processor_failed.app_error",
+    "translation": "Erro ao iniciar o bulk processor do Elasticsearch"
   },
   {
     "id": "ent.elasticsearch.start.start_bulk_processor_failed.app_error",
@@ -3958,6 +4053,10 @@
   {
     "id": "ent.ldap.validate_filter.app_error",
     "translation": "Filtro AD/LDAP Inválido"
+  },
+  {
+    "id": "ent.message_export.generic.license.error",
+    "translation": "Licença não suporta Exportação de Mensagem."
   },
   {
     "id": "ent.metrics.starting.info",
@@ -4296,6 +4395,26 @@
     "translation": "Id de usuário inválido"
   },
   {
+    "id": "model.channel_member_history.is_valid.channel_id.app_error",
+    "translation": "Id do canal inválida"
+  },
+  {
+    "id": "model.channel_member_history.is_valid.join_time.app_error",
+    "translation": "Hora da junção inválida"
+  },
+  {
+    "id": "model.channel_member_history.is_valid.leave_time.app_error",
+    "translation": "Hora de saída inválida"
+  },
+  {
+    "id": "model.channel_member_history.is_valid.user_email.app_error",
+    "translation": "Id do usuário inválido"
+  },
+  {
+    "id": "model.channel_member_history.is_valid.user_id.app_error",
+    "translation": "Id do usuário inválido"
+  },
+  {
     "id": "model.client.connecting.app_error",
     "translation": "Encontramos um erro enquanto conectava ao servidor"
   },
@@ -4373,7 +4492,7 @@
   },
   {
     "id": "model.command.is_valid.display_name.app_error",
-    "translation": "Nome para exibição inválido"
+    "translation": "Título inválido"
   },
   {
     "id": "model.command.is_valid.id.app_error",
@@ -4664,6 +4783,30 @@
     "translation": "Inválido máximo de usuários por equipe em configurações de equipe.  Deve ser um número positivo."
   },
   {
+    "id": "model.config.is_valid.message_export.batch_size.app_error",
+    "translation": "Trabalho de exportação de mensagens BatchSize deve ser um inteiro positivo"
+  },
+  {
+    "id": "model.config.is_valid.message_export.daily_runtime.app_error",
+    "translation": "O trabalho de exportação de mensagens DailyRuntime deve ser 24 horas na forma HH:MM."
+  },
+  {
+    "id": "model.config.is_valid.message_export.enable.app_error",
+    "translation": "O trabalho de exportação de mensagens a configuração EnableExport deve ser verdadeira ou falsa"
+  },
+  {
+    "id": "model.config.is_valid.message_export.export_from.app_error",
+    "translation": "O trabalho de exportação de mensagens ExportFromTimestamp deve ser data e hora (expresso em segundos unix epoch). Somente mensagens enviadas após está data e hora serão exportadas."
+  },
+  {
+    "id": "model.config.is_valid.message_export.file_location.app_error",
+    "translation": "Trabalho de exportação de mensagens FileLocation deve ser um diretório gravável onde os dados de exportação serão gravados"
+  },
+  {
+    "id": "model.config.is_valid.message_export.file_location.relative",
+    "translation": "Trabalho de exportação de mensagens FileLocation deve ser um subdiretório de FileSettings.Directory"
+  },
+  {
     "id": "model.config.is_valid.password_length.app_error",
     "translation": "Tamanho mínimo de senha deve ser um número inteiro maior ou igual a {{.MinLength}} e menor ou igual a {{.MaxLength}}."
   },
@@ -4833,7 +4976,11 @@
   },
   {
     "id": "model.incoming_hook.display_name.app_error",
-    "translation": "Nome para exibição inválido"
+    "translation": "Título inválido"
+  },
+  {
+    "id": "model.incoming_hook.icon_url.app_error",
+    "translation": "Ícone de postagem inválido"
   },
   {
     "id": "model.incoming_hook.id.app_error",
@@ -4850,6 +4997,10 @@
   {
     "id": "model.incoming_hook.user_id.app_error",
     "translation": "Id de usuário inválido"
+  },
+  {
+    "id": "model.incoming_hook.username.app_error",
+    "translation": "Nome do usuário inválido"
   },
   {
     "id": "model.job.is_valid.create_at.app_error",
@@ -4925,7 +5076,7 @@
   },
   {
     "id": "model.outgoing_hook.is_valid.display_name.app_error",
-    "translation": "Nome para exibição inválido"
+    "translation": "Título inválido"
   },
   {
     "id": "model.outgoing_hook.is_valid.id.app_error",
@@ -4958,6 +5109,26 @@
   {
     "id": "model.outgoing_hook.is_valid.words.app_error",
     "translation": "Palavras gatilho inválida"
+  },
+  {
+    "id": "model.plugin_command.error.app_error",
+    "translation": "Um erro aconteceu enquanto tentava executar este comando."
+  },
+  {
+    "id": "model.plugin_key_value.is_valid.key.app_error",
+    "translation": "Chave inválida, deve ter mais de {{.Min}} e um máximo de {{.Max}} caracteres de comprimento."
+  },
+  {
+    "id": "model.plugin_key_value.is_valid.key.app_error",
+    "translation": "Chave inválida, deve ter mais de {{.Min}} e um máximo de {{.Max}} caracteres de comprimento."
+  },
+  {
+    "id": "model.plugin_key_value.is_valid.plugin_id.app_error",
+    "translation": "Plugin ID inválido, deve ter mais de {{.Min}} e um máximo de {{.Max}} caracteres de comprimento."
+  },
+  {
+    "id": "model.plugin_key_value.is_valid.plugin_id.app_error",
+    "translation": "Plugin ID inválido, deve ter mais de {{.Min}} e um máximo de {{.Max}} caracteres de comprimento."
   },
   {
     "id": "model.post.is_valid.channel_id.app_error",
@@ -5656,6 +5827,34 @@
     "translation": "Encontramos um erro ao atualizar o membro do canal"
   },
   {
+    "id": "store.sql_channel_member_history.get_all.app_error",
+    "translation": "Falha ao obter registros"
+  },
+  {
+    "id": "store.sql_channel_member_history.get_users_in_channel_at.app_error",
+    "translation": "Falha ao obter usuários no canal no momento especificado"
+  },
+  {
+    "id": "store.sql_channel_member_history.get_users_in_channel_during.app_error",
+    "translation": "Falha ao obter usuários no canal no período especificado"
+  },
+  {
+    "id": "store.sql_channel_member_history.log_join_event.app_error",
+    "translation": "Falha ao gravar o histórico de membros do canal"
+  },
+  {
+    "id": "store.sql_channel_member_history.log_leave_event.select_error",
+    "translation": "Falha ao gravar o histórico de membros do canal. Nenhum registro de junção existente encontrado"
+  },
+  {
+    "id": "store.sql_channel_member_history.log_leave_event.update_error",
+    "translation": "Falha ao gravar o histórico de membros do canal. Falha ao atualizar o registro de junção existente"
+  },
+  {
+    "id": "store.sql_channel_member_history.permanent_delete_batch.app_error",
+    "translation": "Falha ao apagar registros"
+  },
+  {
     "id": "store.sql_command.analytics_command_count.app_error",
     "translation": "Não foi possível contar os comandos"
   },
@@ -5714,6 +5913,10 @@
   {
     "id": "store.sql_compliance.get.finding.app_error",
     "translation": "Encontramos um erro ao obter o relatório de conformidade"
+  },
+  {
+    "id": "store.sql_compliance.message_export.app_error",
+    "translation": "Falha ao selecionar dados de exportação de mensagens"
   },
   {
     "id": "store.sql_compliance.save.saving.app_error",
@@ -5918,6 +6121,22 @@
   {
     "id": "store.sql_oauth.update_app.updating.app_error",
     "translation": "Encontramos um erro ao atualizar o app"
+  },
+  {
+    "id": "store.sql_plugin_store.delete.app_error",
+    "translation": "Não foi possível excluir o valor da chave do plugin"
+  },
+  {
+    "id": "store.sql_plugin_store.get.app_error",
+    "translation": "Não foi possível obter o valor da chave do plugin"
+  },
+  {
+    "id": "store.sql_plugin_store.save.app_error",
+    "translation": "Não foi possível salvar ou atualizar o valor da chave do plugin"
+  },
+  {
+    "id": "store.sql_plugin_store.save_unique.app_error",
+    "translation": "Não foi possível salvar ou atualizar o valor da chave do plugin devido a violação de restrição exclusiva"
   },
   {
     "id": "store.sql_post.analytics_posts_count.app_error",

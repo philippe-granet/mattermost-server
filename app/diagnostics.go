@@ -44,6 +44,7 @@ const (
 	TRACK_CONFIG_ELASTICSEARCH  = "config_elasticsearch"
 	TRACK_CONFIG_PLUGIN         = "config_plugin"
 	TRACK_CONFIG_DATA_RETENTION = "config_data_retention"
+	TRACK_CONFIG_MESSAGE_EXPORT = "config_message_export"
 
 	TRACK_ACTIVITY = "activity"
 	TRACK_LICENSE  = "license"
@@ -55,16 +56,16 @@ var client *analytics.Client
 
 func (a *App) SendDailyDiagnostics() {
 	if *a.Config().LogSettings.EnableDiagnostics && a.IsLeader() {
-		initDiagnostics("")
+		a.initDiagnostics("")
 		a.trackActivity()
 		a.trackConfig()
-		trackLicense()
+		a.trackLicense()
 		a.trackPlugins()
 		a.trackServer()
 	}
 }
 
-func initDiagnostics(endpoint string) {
+func (a *App) initDiagnostics(endpoint string) {
 	if client == nil {
 		client = analytics.New(SEGMENT_KEY)
 		// For testing
@@ -75,15 +76,15 @@ func initDiagnostics(endpoint string) {
 			client.Logger = log.New(os.Stdout, "segment ", log.LstdFlags)
 		}
 		client.Identify(&analytics.Identify{
-			UserId: utils.CfgDiagnosticId,
+			UserId: a.DiagnosticId(),
 		})
 	}
 }
 
-func SendDiagnostic(event string, properties map[string]interface{}) {
+func (a *App) SendDiagnostic(event string, properties map[string]interface{}) {
 	client.Track(&analytics.Track{
 		Event:      event,
-		UserId:     utils.CfgDiagnosticId,
+		UserId:     a.DiagnosticId(),
 		Properties: properties,
 	})
 }
@@ -107,6 +108,14 @@ func pluginSetting(pluginSettings *model.PluginSettings, plugin, key string, def
 		return value
 	}
 	return defaultValue
+}
+
+func pluginActivated(pluginStates map[string]*model.PluginState, pluginId string) bool {
+	state, ok := pluginStates[pluginId]
+	if !ok {
+		return false
+	}
+	return state.Enable
 }
 
 func (a *App) trackActivity() {
@@ -161,7 +170,7 @@ func (a *App) trackActivity() {
 		postsCount = pcr.Data.(int64)
 	}
 
-	SendDiagnostic(TRACK_ACTIVITY, map[string]interface{}{
+	a.SendDiagnostic(TRACK_ACTIVITY, map[string]interface{}{
 		"registered_users":          userCount,
 		"active_users":              activeUserCount,
 		"registered_inactive_users": inactiveUserCount,
@@ -180,56 +189,61 @@ func (a *App) trackActivity() {
 
 func (a *App) trackConfig() {
 	cfg := a.Config()
-	SendDiagnostic(TRACK_CONFIG_SERVICE, map[string]interface{}{
-		"web_server_mode":                                  *cfg.ServiceSettings.WebserverMode,
-		"enable_security_fix_alert":                        *cfg.ServiceSettings.EnableSecurityFixAlert,
-		"enable_insecure_outgoing_connections":             *cfg.ServiceSettings.EnableInsecureOutgoingConnections,
-		"enable_incoming_webhooks":                         cfg.ServiceSettings.EnableIncomingWebhooks,
-		"enable_outgoing_webhooks":                         cfg.ServiceSettings.EnableOutgoingWebhooks,
-		"enable_commands":                                  *cfg.ServiceSettings.EnableCommands,
-		"enable_only_admin_integrations":                   *cfg.ServiceSettings.EnableOnlyAdminIntegrations,
-		"enable_post_username_override":                    cfg.ServiceSettings.EnablePostUsernameOverride,
-		"enable_post_icon_override":                        cfg.ServiceSettings.EnablePostIconOverride,
-		"enable_apiv3":                                     *cfg.ServiceSettings.EnableAPIv3,
-		"enable_user_access_tokens":                        *cfg.ServiceSettings.EnableUserAccessTokens,
-		"enable_custom_emoji":                              *cfg.ServiceSettings.EnableCustomEmoji,
-		"enable_emoji_picker":                              *cfg.ServiceSettings.EnableEmojiPicker,
-		"restrict_custom_emoji_creation":                   *cfg.ServiceSettings.RestrictCustomEmojiCreation,
-		"enable_testing":                                   cfg.ServiceSettings.EnableTesting,
-		"enable_developer":                                 *cfg.ServiceSettings.EnableDeveloper,
-		"enable_multifactor_authentication":                *cfg.ServiceSettings.EnableMultifactorAuthentication,
-		"enforce_multifactor_authentication":               *cfg.ServiceSettings.EnforceMultifactorAuthentication,
-		"enable_oauth_service_provider":                    cfg.ServiceSettings.EnableOAuthServiceProvider,
-		"connection_security":                              *cfg.ServiceSettings.ConnectionSecurity,
-		"uses_letsencrypt":                                 *cfg.ServiceSettings.UseLetsEncrypt,
-		"forward_80_to_443":                                *cfg.ServiceSettings.Forward80To443,
-		"maximum_login_attempts":                           *cfg.ServiceSettings.MaximumLoginAttempts,
-		"session_length_web_in_days":                       *cfg.ServiceSettings.SessionLengthWebInDays,
-		"session_length_mobile_in_days":                    *cfg.ServiceSettings.SessionLengthMobileInDays,
-		"session_length_sso_in_days":                       *cfg.ServiceSettings.SessionLengthSSOInDays,
-		"session_cache_in_minutes":                         *cfg.ServiceSettings.SessionCacheInMinutes,
-		"session_idle_timeout_in_minutes":                  *cfg.ServiceSettings.SessionIdleTimeoutInMinutes,
-		"isdefault_site_url":                               isDefault(*cfg.ServiceSettings.SiteURL, model.SERVICE_SETTINGS_DEFAULT_SITE_URL),
-		"isdefault_tls_cert_file":                          isDefault(*cfg.ServiceSettings.TLSCertFile, model.SERVICE_SETTINGS_DEFAULT_TLS_CERT_FILE),
-		"isdefault_tls_key_file":                           isDefault(*cfg.ServiceSettings.TLSKeyFile, model.SERVICE_SETTINGS_DEFAULT_TLS_KEY_FILE),
-		"isdefault_read_timeout":                           isDefault(*cfg.ServiceSettings.ReadTimeout, model.SERVICE_SETTINGS_DEFAULT_READ_TIMEOUT),
-		"isdefault_write_timeout":                          isDefault(*cfg.ServiceSettings.WriteTimeout, model.SERVICE_SETTINGS_DEFAULT_WRITE_TIMEOUT),
-		"isdefault_google_developer_key":                   isDefault(cfg.ServiceSettings.GoogleDeveloperKey, ""),
-		"isdefault_allow_cors_from":                        isDefault(*cfg.ServiceSettings.AllowCorsFrom, model.SERVICE_SETTINGS_DEFAULT_ALLOW_CORS_FROM),
-		"isdefault_allowed_untrusted_internal_connections": isDefault(*cfg.ServiceSettings.AllowedUntrustedInternalConnections, ""),
-		"restrict_post_delete":                             *cfg.ServiceSettings.RestrictPostDelete,
-		"allow_edit_post":                                  *cfg.ServiceSettings.AllowEditPost,
-		"post_edit_time_limit":                             *cfg.ServiceSettings.PostEditTimeLimit,
-		"enable_user_typing_messages":                      *cfg.ServiceSettings.EnableUserTypingMessages,
-		"enable_channel_viewed_messages":                   *cfg.ServiceSettings.EnableChannelViewedMessages,
-		"time_between_user_typing_updates_milliseconds":    *cfg.ServiceSettings.TimeBetweenUserTypingUpdatesMilliseconds,
-		"cluster_log_timeout_milliseconds":                 *cfg.ServiceSettings.ClusterLogTimeoutMilliseconds,
-		"enable_post_search":                               *cfg.ServiceSettings.EnablePostSearch,
-		"enable_user_statuses":                             *cfg.ServiceSettings.EnableUserStatuses,
-		"close_unused_direct_messages":                     *cfg.ServiceSettings.CloseUnusedDirectMessages,
+	a.SendDiagnostic(TRACK_CONFIG_SERVICE, map[string]interface{}{
+		"web_server_mode":                                         *cfg.ServiceSettings.WebserverMode,
+		"enable_security_fix_alert":                               *cfg.ServiceSettings.EnableSecurityFixAlert,
+		"enable_insecure_outgoing_connections":                    *cfg.ServiceSettings.EnableInsecureOutgoingConnections,
+		"enable_incoming_webhooks":                                cfg.ServiceSettings.EnableIncomingWebhooks,
+		"enable_outgoing_webhooks":                                cfg.ServiceSettings.EnableOutgoingWebhooks,
+		"enable_commands":                                         *cfg.ServiceSettings.EnableCommands,
+		"enable_only_admin_integrations":                          *cfg.ServiceSettings.EnableOnlyAdminIntegrations,
+		"enable_post_username_override":                           cfg.ServiceSettings.EnablePostUsernameOverride,
+		"enable_post_icon_override":                               cfg.ServiceSettings.EnablePostIconOverride,
+		"enable_apiv3":                                            *cfg.ServiceSettings.EnableAPIv3,
+		"enable_user_access_tokens":                               *cfg.ServiceSettings.EnableUserAccessTokens,
+		"enable_custom_emoji":                                     *cfg.ServiceSettings.EnableCustomEmoji,
+		"enable_emoji_picker":                                     *cfg.ServiceSettings.EnableEmojiPicker,
+		"experimental_enable_authentication_transfer":             *cfg.ServiceSettings.ExperimentalEnableAuthenticationTransfer,
+		"restrict_custom_emoji_creation":                          *cfg.ServiceSettings.RestrictCustomEmojiCreation,
+		"enable_testing":                                          cfg.ServiceSettings.EnableTesting,
+		"enable_developer":                                        *cfg.ServiceSettings.EnableDeveloper,
+		"enable_multifactor_authentication":                       *cfg.ServiceSettings.EnableMultifactorAuthentication,
+		"enforce_multifactor_authentication":                      *cfg.ServiceSettings.EnforceMultifactorAuthentication,
+		"enable_oauth_service_provider":                           cfg.ServiceSettings.EnableOAuthServiceProvider,
+		"connection_security":                                     *cfg.ServiceSettings.ConnectionSecurity,
+		"uses_letsencrypt":                                        *cfg.ServiceSettings.UseLetsEncrypt,
+		"forward_80_to_443":                                       *cfg.ServiceSettings.Forward80To443,
+		"maximum_login_attempts":                                  *cfg.ServiceSettings.MaximumLoginAttempts,
+		"session_length_web_in_days":                              *cfg.ServiceSettings.SessionLengthWebInDays,
+		"session_length_mobile_in_days":                           *cfg.ServiceSettings.SessionLengthMobileInDays,
+		"session_length_sso_in_days":                              *cfg.ServiceSettings.SessionLengthSSOInDays,
+		"session_cache_in_minutes":                                *cfg.ServiceSettings.SessionCacheInMinutes,
+		"session_idle_timeout_in_minutes":                         *cfg.ServiceSettings.SessionIdleTimeoutInMinutes,
+		"isdefault_site_url":                                      isDefault(*cfg.ServiceSettings.SiteURL, model.SERVICE_SETTINGS_DEFAULT_SITE_URL),
+		"isdefault_tls_cert_file":                                 isDefault(*cfg.ServiceSettings.TLSCertFile, model.SERVICE_SETTINGS_DEFAULT_TLS_CERT_FILE),
+		"isdefault_tls_key_file":                                  isDefault(*cfg.ServiceSettings.TLSKeyFile, model.SERVICE_SETTINGS_DEFAULT_TLS_KEY_FILE),
+		"isdefault_read_timeout":                                  isDefault(*cfg.ServiceSettings.ReadTimeout, model.SERVICE_SETTINGS_DEFAULT_READ_TIMEOUT),
+		"isdefault_write_timeout":                                 isDefault(*cfg.ServiceSettings.WriteTimeout, model.SERVICE_SETTINGS_DEFAULT_WRITE_TIMEOUT),
+		"isdefault_google_developer_key":                          isDefault(cfg.ServiceSettings.GoogleDeveloperKey, ""),
+		"isdefault_allow_cors_from":                               isDefault(*cfg.ServiceSettings.AllowCorsFrom, model.SERVICE_SETTINGS_DEFAULT_ALLOW_CORS_FROM),
+		"isdefault_allowed_untrusted_internal_connections":        isDefault(*cfg.ServiceSettings.AllowedUntrustedInternalConnections, ""),
+		"restrict_post_delete":                                    *cfg.ServiceSettings.RestrictPostDelete,
+		"allow_edit_post":                                         *cfg.ServiceSettings.AllowEditPost,
+		"post_edit_time_limit":                                    *cfg.ServiceSettings.PostEditTimeLimit,
+		"enable_user_typing_messages":                             *cfg.ServiceSettings.EnableUserTypingMessages,
+		"enable_channel_viewed_messages":                          *cfg.ServiceSettings.EnableChannelViewedMessages,
+		"time_between_user_typing_updates_milliseconds":           *cfg.ServiceSettings.TimeBetweenUserTypingUpdatesMilliseconds,
+		"cluster_log_timeout_milliseconds":                        *cfg.ServiceSettings.ClusterLogTimeoutMilliseconds,
+		"enable_post_search":                                      *cfg.ServiceSettings.EnablePostSearch,
+		"enable_user_statuses":                                    *cfg.ServiceSettings.EnableUserStatuses,
+		"close_unused_direct_messages":                            *cfg.ServiceSettings.CloseUnusedDirectMessages,
+		"enable_preview_features":                                 *cfg.ServiceSettings.EnablePreviewFeatures,
+		"enable_tutorial":                                         *cfg.ServiceSettings.EnableTutorial,
+		"experimental_enable_default_channel_leave_join_messages": *cfg.ServiceSettings.ExperimentalEnableDefaultChannelLeaveJoinMessages,
+		"experimental_group_unread_channels":                      *cfg.ServiceSettings.ExperimentalGroupUnreadChannels,
 	})
 
-	SendDiagnostic(TRACK_CONFIG_TEAM, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_TEAM, map[string]interface{}{
 		"enable_user_creation":                    cfg.TeamSettings.EnableUserCreation,
 		"enable_team_creation":                    cfg.TeamSettings.EnableTeamCreation,
 		"restrict_team_invite":                    *cfg.TeamSettings.RestrictTeamInvite,
@@ -254,9 +268,10 @@ func (a *App) trackConfig() {
 		"restrict_private_channel_manage_members": *cfg.TeamSettings.RestrictPrivateChannelManageMembers,
 		"enable_X_to_leave_channels_from_LHS":     *cfg.TeamSettings.EnableXToLeaveChannelsFromLHS,
 		"experimental_town_square_is_read_only":   *cfg.TeamSettings.ExperimentalTownSquareIsReadOnly,
+		"experimental_primary_team":               isDefault(*cfg.TeamSettings.ExperimentalPrimaryTeam, ""),
 	})
 
-	SendDiagnostic(TRACK_CONFIG_CLIENT_REQ, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_CLIENT_REQ, map[string]interface{}{
 		"android_latest_version": cfg.ClientRequirements.AndroidLatestVersion,
 		"android_min_version":    cfg.ClientRequirements.AndroidMinVersion,
 		"desktop_latest_version": cfg.ClientRequirements.DesktopLatestVersion,
@@ -265,7 +280,7 @@ func (a *App) trackConfig() {
 		"ios_min_version":        cfg.ClientRequirements.IosMinVersion,
 	})
 
-	SendDiagnostic(TRACK_CONFIG_SQL, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_SQL, map[string]interface{}{
 		"driver_name":                 *cfg.SqlSettings.DriverName,
 		"trace":                       cfg.SqlSettings.Trace,
 		"max_idle_conns":              *cfg.SqlSettings.MaxIdleConns,
@@ -275,7 +290,7 @@ func (a *App) trackConfig() {
 		"query_timeout":               *cfg.SqlSettings.QueryTimeout,
 	})
 
-	SendDiagnostic(TRACK_CONFIG_LOG, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_LOG, map[string]interface{}{
 		"enable_console":           cfg.LogSettings.EnableConsole,
 		"console_level":            cfg.LogSettings.ConsoleLevel,
 		"enable_file":              cfg.LogSettings.EnableFile,
@@ -285,7 +300,7 @@ func (a *App) trackConfig() {
 		"isdefault_file_location":  isDefault(cfg.LogSettings.FileLocation, ""),
 	})
 
-	SendDiagnostic(TRACK_CONFIG_PASSWORD, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_PASSWORD, map[string]interface{}{
 		"minimum_length": *cfg.PasswordSettings.MinimumLength,
 		"lowercase":      *cfg.PasswordSettings.Lowercase,
 		"number":         *cfg.PasswordSettings.Number,
@@ -293,7 +308,7 @@ func (a *App) trackConfig() {
 		"symbol":         *cfg.PasswordSettings.Symbol,
 	})
 
-	SendDiagnostic(TRACK_CONFIG_FILE, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_FILE, map[string]interface{}{
 		"enable_public_links":     cfg.FileSettings.EnablePublicLink,
 		"driver_name":             *cfg.FileSettings.DriverName,
 		"amazon_s3_ssl":           *cfg.FileSettings.AmazonS3SSL,
@@ -306,12 +321,13 @@ func (a *App) trackConfig() {
 		"enable_mobile_download":  *cfg.FileSettings.EnableMobileDownload,
 	})
 
-	SendDiagnostic(TRACK_CONFIG_EMAIL, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_EMAIL, map[string]interface{}{
 		"enable_sign_up_with_email":            cfg.EmailSettings.EnableSignUpWithEmail,
 		"enable_sign_in_with_email":            *cfg.EmailSettings.EnableSignInWithEmail,
 		"enable_sign_in_with_username":         *cfg.EmailSettings.EnableSignInWithUsername,
 		"require_email_verification":           cfg.EmailSettings.RequireEmailVerification,
 		"send_email_notifications":             cfg.EmailSettings.SendEmailNotifications,
+		"use_channel_in_email_notifications":   *cfg.EmailSettings.UseChannelInEmailNotifications,
 		"email_notification_contents_type":     *cfg.EmailSettings.EmailNotificationContentsType,
 		"enable_smtp_auth":                     *cfg.EmailSettings.EnableSMTPAuth,
 		"connection_security":                  cfg.EmailSettings.ConnectionSecurity,
@@ -324,9 +340,12 @@ func (a *App) trackConfig() {
 		"isdefault_feedback_email":             isDefault(cfg.EmailSettings.FeedbackEmail, ""),
 		"isdefault_feedback_organization":      isDefault(*cfg.EmailSettings.FeedbackOrganization, model.EMAIL_SETTINGS_DEFAULT_FEEDBACK_ORGANIZATION),
 		"skip_server_certificate_verification": *cfg.EmailSettings.SkipServerCertificateVerification,
+		"isdefault_login_button_color":         isDefault(*cfg.EmailSettings.LoginButtonColor, ""),
+		"isdefault_login_button_border_color":  isDefault(*cfg.EmailSettings.LoginButtonBorderColor, ""),
+		"isdefault_login_button_text_color":    isDefault(*cfg.EmailSettings.LoginButtonTextColor, ""),
 	})
 
-	SendDiagnostic(TRACK_CONFIG_RATE, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_RATE, map[string]interface{}{
 		"enable_rate_limiter":      *cfg.RateLimitSettings.Enable,
 		"vary_by_remote_address":   cfg.RateLimitSettings.VaryByRemoteAddr,
 		"per_sec":                  *cfg.RateLimitSettings.PerSec,
@@ -335,25 +354,25 @@ func (a *App) trackConfig() {
 		"isdefault_vary_by_header": isDefault(cfg.RateLimitSettings.VaryByHeader, ""),
 	})
 
-	SendDiagnostic(TRACK_CONFIG_PRIVACY, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_PRIVACY, map[string]interface{}{
 		"show_email_address": cfg.PrivacySettings.ShowEmailAddress,
 		"show_full_name":     cfg.PrivacySettings.ShowFullName,
 	})
 
-	SendDiagnostic(TRACK_CONFIG_THEME, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_THEME, map[string]interface{}{
 		"enable_theme_selection":  *cfg.ThemeSettings.EnableThemeSelection,
 		"isdefault_default_theme": isDefault(*cfg.ThemeSettings.DefaultTheme, model.TEAM_SETTINGS_DEFAULT_TEAM_TEXT),
 		"allow_custom_themes":     *cfg.ThemeSettings.AllowCustomThemes,
 		"allowed_themes":          len(cfg.ThemeSettings.AllowedThemes),
 	})
 
-	SendDiagnostic(TRACK_CONFIG_OAUTH, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_OAUTH, map[string]interface{}{
 		"enable_gitlab":    cfg.GitLabSettings.Enable,
 		"enable_google":    cfg.GoogleSettings.Enable,
 		"enable_office365": cfg.Office365Settings.Enable,
 	})
 
-	SendDiagnostic(TRACK_CONFIG_SUPPORT, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_SUPPORT, map[string]interface{}{
 		"isdefault_terms_of_service_link": isDefault(*cfg.SupportSettings.TermsOfServiceLink, model.SUPPORT_SETTINGS_DEFAULT_TERMS_OF_SERVICE_LINK),
 		"isdefault_privacy_policy_link":   isDefault(*cfg.SupportSettings.PrivacyPolicyLink, model.SUPPORT_SETTINGS_DEFAULT_PRIVACY_POLICY_LINK),
 		"isdefault_about_link":            isDefault(*cfg.SupportSettings.AboutLink, model.SUPPORT_SETTINGS_DEFAULT_ABOUT_LINK),
@@ -362,86 +381,92 @@ func (a *App) trackConfig() {
 		"isdefault_support_email":         isDefault(*cfg.SupportSettings.SupportEmail, model.SUPPORT_SETTINGS_DEFAULT_SUPPORT_EMAIL),
 	})
 
-	SendDiagnostic(TRACK_CONFIG_LDAP, map[string]interface{}{
-		"enable":                         *cfg.LdapSettings.Enable,
-		"enable_sync":                    *cfg.LdapSettings.EnableSync,
-		"connection_security":            *cfg.LdapSettings.ConnectionSecurity,
-		"skip_certificate_verification":  *cfg.LdapSettings.SkipCertificateVerification,
-		"sync_interval_minutes":          *cfg.LdapSettings.SyncIntervalMinutes,
-		"query_timeout":                  *cfg.LdapSettings.QueryTimeout,
-		"max_page_size":                  *cfg.LdapSettings.MaxPageSize,
-		"isdefault_first_name_attribute": isDefault(*cfg.LdapSettings.FirstNameAttribute, model.LDAP_SETTINGS_DEFAULT_FIRST_NAME_ATTRIBUTE),
-		"isdefault_last_name_attribute":  isDefault(*cfg.LdapSettings.LastNameAttribute, model.LDAP_SETTINGS_DEFAULT_LAST_NAME_ATTRIBUTE),
-		"isdefault_email_attribute":      isDefault(*cfg.LdapSettings.EmailAttribute, model.LDAP_SETTINGS_DEFAULT_EMAIL_ATTRIBUTE),
-		"isdefault_username_attribute":   isDefault(*cfg.LdapSettings.UsernameAttribute, model.LDAP_SETTINGS_DEFAULT_USERNAME_ATTRIBUTE),
-		"isdefault_nickname_attribute":   isDefault(*cfg.LdapSettings.NicknameAttribute, model.LDAP_SETTINGS_DEFAULT_NICKNAME_ATTRIBUTE),
-		"isdefault_id_attribute":         isDefault(*cfg.LdapSettings.IdAttribute, model.LDAP_SETTINGS_DEFAULT_ID_ATTRIBUTE),
-		"isdefault_position_attribute":   isDefault(*cfg.LdapSettings.PositionAttribute, model.LDAP_SETTINGS_DEFAULT_POSITION_ATTRIBUTE),
-		"isdefault_login_field_name":     isDefault(*cfg.LdapSettings.LoginFieldName, model.LDAP_SETTINGS_DEFAULT_LOGIN_FIELD_NAME),
+	a.SendDiagnostic(TRACK_CONFIG_LDAP, map[string]interface{}{
+		"enable":                              *cfg.LdapSettings.Enable,
+		"enable_sync":                         *cfg.LdapSettings.EnableSync,
+		"connection_security":                 *cfg.LdapSettings.ConnectionSecurity,
+		"skip_certificate_verification":       *cfg.LdapSettings.SkipCertificateVerification,
+		"sync_interval_minutes":               *cfg.LdapSettings.SyncIntervalMinutes,
+		"query_timeout":                       *cfg.LdapSettings.QueryTimeout,
+		"max_page_size":                       *cfg.LdapSettings.MaxPageSize,
+		"isdefault_first_name_attribute":      isDefault(*cfg.LdapSettings.FirstNameAttribute, model.LDAP_SETTINGS_DEFAULT_FIRST_NAME_ATTRIBUTE),
+		"isdefault_last_name_attribute":       isDefault(*cfg.LdapSettings.LastNameAttribute, model.LDAP_SETTINGS_DEFAULT_LAST_NAME_ATTRIBUTE),
+		"isdefault_email_attribute":           isDefault(*cfg.LdapSettings.EmailAttribute, model.LDAP_SETTINGS_DEFAULT_EMAIL_ATTRIBUTE),
+		"isdefault_username_attribute":        isDefault(*cfg.LdapSettings.UsernameAttribute, model.LDAP_SETTINGS_DEFAULT_USERNAME_ATTRIBUTE),
+		"isdefault_nickname_attribute":        isDefault(*cfg.LdapSettings.NicknameAttribute, model.LDAP_SETTINGS_DEFAULT_NICKNAME_ATTRIBUTE),
+		"isdefault_id_attribute":              isDefault(*cfg.LdapSettings.IdAttribute, model.LDAP_SETTINGS_DEFAULT_ID_ATTRIBUTE),
+		"isdefault_position_attribute":        isDefault(*cfg.LdapSettings.PositionAttribute, model.LDAP_SETTINGS_DEFAULT_POSITION_ATTRIBUTE),
+		"isdefault_login_field_name":          isDefault(*cfg.LdapSettings.LoginFieldName, model.LDAP_SETTINGS_DEFAULT_LOGIN_FIELD_NAME),
+		"isdefault_login_button_color":        isDefault(*cfg.LdapSettings.LoginButtonColor, ""),
+		"isdefault_login_button_border_color": isDefault(*cfg.LdapSettings.LoginButtonBorderColor, ""),
+		"isdefault_login_button_text_color":   isDefault(*cfg.LdapSettings.LoginButtonTextColor, ""),
 	})
 
-	SendDiagnostic(TRACK_CONFIG_COMPLIANCE, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_COMPLIANCE, map[string]interface{}{
 		"enable":       *cfg.ComplianceSettings.Enable,
 		"enable_daily": *cfg.ComplianceSettings.EnableDaily,
 	})
 
-	SendDiagnostic(TRACK_CONFIG_LOCALIZATION, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_LOCALIZATION, map[string]interface{}{
 		"default_server_locale": *cfg.LocalizationSettings.DefaultServerLocale,
 		"default_client_locale": *cfg.LocalizationSettings.DefaultClientLocale,
 		"available_locales":     *cfg.LocalizationSettings.AvailableLocales,
 	})
 
-	SendDiagnostic(TRACK_CONFIG_SAML, map[string]interface{}{
-		"enable":                         *cfg.SamlSettings.Enable,
-		"enable_sync_with_ldap":          *cfg.SamlSettings.EnableSyncWithLdap,
-		"verify":                         *cfg.SamlSettings.Verify,
-		"encrypt":                        *cfg.SamlSettings.Encrypt,
-		"isdefault_first_name_attribute": isDefault(*cfg.SamlSettings.FirstNameAttribute, model.SAML_SETTINGS_DEFAULT_FIRST_NAME_ATTRIBUTE),
-		"isdefault_last_name_attribute":  isDefault(*cfg.SamlSettings.LastNameAttribute, model.SAML_SETTINGS_DEFAULT_LAST_NAME_ATTRIBUTE),
-		"isdefault_email_attribute":      isDefault(*cfg.SamlSettings.EmailAttribute, model.SAML_SETTINGS_DEFAULT_EMAIL_ATTRIBUTE),
-		"isdefault_username_attribute":   isDefault(*cfg.SamlSettings.UsernameAttribute, model.SAML_SETTINGS_DEFAULT_USERNAME_ATTRIBUTE),
-		"isdefault_nickname_attribute":   isDefault(*cfg.SamlSettings.NicknameAttribute, model.SAML_SETTINGS_DEFAULT_NICKNAME_ATTRIBUTE),
-		"isdefault_locale_attribute":     isDefault(*cfg.SamlSettings.LocaleAttribute, model.SAML_SETTINGS_DEFAULT_LOCALE_ATTRIBUTE),
-		"isdefault_position_attribute":   isDefault(*cfg.SamlSettings.PositionAttribute, model.SAML_SETTINGS_DEFAULT_POSITION_ATTRIBUTE),
-		"isdefault_login_button_text":    isDefault(*cfg.SamlSettings.LoginButtonText, model.USER_AUTH_SERVICE_SAML_TEXT),
+	a.SendDiagnostic(TRACK_CONFIG_SAML, map[string]interface{}{
+		"enable":                              *cfg.SamlSettings.Enable,
+		"enable_sync_with_ldap":               *cfg.SamlSettings.EnableSyncWithLdap,
+		"verify":                              *cfg.SamlSettings.Verify,
+		"encrypt":                             *cfg.SamlSettings.Encrypt,
+		"isdefault_first_name_attribute":      isDefault(*cfg.SamlSettings.FirstNameAttribute, model.SAML_SETTINGS_DEFAULT_FIRST_NAME_ATTRIBUTE),
+		"isdefault_last_name_attribute":       isDefault(*cfg.SamlSettings.LastNameAttribute, model.SAML_SETTINGS_DEFAULT_LAST_NAME_ATTRIBUTE),
+		"isdefault_email_attribute":           isDefault(*cfg.SamlSettings.EmailAttribute, model.SAML_SETTINGS_DEFAULT_EMAIL_ATTRIBUTE),
+		"isdefault_username_attribute":        isDefault(*cfg.SamlSettings.UsernameAttribute, model.SAML_SETTINGS_DEFAULT_USERNAME_ATTRIBUTE),
+		"isdefault_nickname_attribute":        isDefault(*cfg.SamlSettings.NicknameAttribute, model.SAML_SETTINGS_DEFAULT_NICKNAME_ATTRIBUTE),
+		"isdefault_locale_attribute":          isDefault(*cfg.SamlSettings.LocaleAttribute, model.SAML_SETTINGS_DEFAULT_LOCALE_ATTRIBUTE),
+		"isdefault_position_attribute":        isDefault(*cfg.SamlSettings.PositionAttribute, model.SAML_SETTINGS_DEFAULT_POSITION_ATTRIBUTE),
+		"isdefault_login_button_text":         isDefault(*cfg.SamlSettings.LoginButtonText, model.USER_AUTH_SERVICE_SAML_TEXT),
+		"isdefault_login_button_color":        isDefault(*cfg.SamlSettings.LoginButtonColor, ""),
+		"isdefault_login_button_border_color": isDefault(*cfg.SamlSettings.LoginButtonBorderColor, ""),
+		"isdefault_login_button_text_color":   isDefault(*cfg.SamlSettings.LoginButtonTextColor, ""),
 	})
 
-	SendDiagnostic(TRACK_CONFIG_CLUSTER, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_CLUSTER, map[string]interface{}{
 		"enable":                  *cfg.ClusterSettings.Enable,
 		"use_ip_address":          *cfg.ClusterSettings.UseIpAddress,
 		"use_experimental_gossip": *cfg.ClusterSettings.UseExperimentalGossip,
 		"read_only_config":        *cfg.ClusterSettings.ReadOnlyConfig,
 	})
 
-	SendDiagnostic(TRACK_CONFIG_METRICS, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_METRICS, map[string]interface{}{
 		"enable":             *cfg.MetricsSettings.Enable,
 		"block_profile_rate": *cfg.MetricsSettings.BlockProfileRate,
 	})
 
-	SendDiagnostic(TRACK_CONFIG_NATIVEAPP, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_NATIVEAPP, map[string]interface{}{
 		"isdefault_app_download_link":         isDefault(*cfg.NativeAppSettings.AppDownloadLink, model.NATIVEAPP_SETTINGS_DEFAULT_APP_DOWNLOAD_LINK),
 		"isdefault_android_app_download_link": isDefault(*cfg.NativeAppSettings.AndroidAppDownloadLink, model.NATIVEAPP_SETTINGS_DEFAULT_ANDROID_APP_DOWNLOAD_LINK),
 		"isdefault_iosapp_download_link":      isDefault(*cfg.NativeAppSettings.IosAppDownloadLink, model.NATIVEAPP_SETTINGS_DEFAULT_IOS_APP_DOWNLOAD_LINK),
 	})
 
-	SendDiagnostic(TRACK_CONFIG_WEBRTC, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_WEBRTC, map[string]interface{}{
 		"enable":             *cfg.WebrtcSettings.Enable,
 		"isdefault_stun_uri": isDefault(*cfg.WebrtcSettings.StunURI, model.WEBRTC_SETTINGS_DEFAULT_STUN_URI),
 		"isdefault_turn_uri": isDefault(*cfg.WebrtcSettings.TurnURI, model.WEBRTC_SETTINGS_DEFAULT_TURN_URI),
 	})
 
-	SendDiagnostic(TRACK_CONFIG_ANALYTICS, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_ANALYTICS, map[string]interface{}{
 		"isdefault_max_users_for_statistics": isDefault(*cfg.AnalyticsSettings.MaxUsersForStatistics, model.ANALYTICS_SETTINGS_DEFAULT_MAX_USERS_FOR_STATISTICS),
 	})
 
-	SendDiagnostic(TRACK_CONFIG_ANNOUNCEMENT, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_ANNOUNCEMENT, map[string]interface{}{
 		"enable_banner":               *cfg.AnnouncementSettings.EnableBanner,
 		"isdefault_banner_color":      isDefault(*cfg.AnnouncementSettings.BannerColor, model.ANNOUNCEMENT_SETTINGS_DEFAULT_BANNER_COLOR),
 		"isdefault_banner_text_color": isDefault(*cfg.AnnouncementSettings.BannerTextColor, model.ANNOUNCEMENT_SETTINGS_DEFAULT_BANNER_TEXT_COLOR),
 		"allow_banner_dismissal":      *cfg.AnnouncementSettings.AllowBannerDismissal,
 	})
 
-	SendDiagnostic(TRACK_CONFIG_ELASTICSEARCH, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_ELASTICSEARCH, map[string]interface{}{
 		"isdefault_connection_url":          isDefault(*cfg.ElasticsearchSettings.ConnectionUrl, model.ELASTICSEARCH_SETTINGS_DEFAULT_CONNECTION_URL),
 		"isdefault_username":                isDefault(*cfg.ElasticsearchSettings.Username, model.ELASTICSEARCH_SETTINGS_DEFAULT_USERNAME),
 		"isdefault_password":                isDefault(*cfg.ElasticsearchSettings.Password, model.ELASTICSEARCH_SETTINGS_DEFAULT_PASSWORD),
@@ -456,22 +481,30 @@ func (a *App) trackConfig() {
 		"request_timeout_seconds":           *cfg.ElasticsearchSettings.RequestTimeoutSeconds,
 	})
 
-	SendDiagnostic(TRACK_CONFIG_PLUGIN, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_PLUGIN, map[string]interface{}{
 		"enable_jira":    pluginSetting(&cfg.PluginSettings, "jira", "enabled", false),
+		"enable_zoom":    pluginActivated(cfg.PluginSettings.PluginStates, "zoom"),
 		"enable":         *cfg.PluginSettings.Enable,
 		"enable_uploads": *cfg.PluginSettings.EnableUploads,
 	})
 
-	SendDiagnostic(TRACK_CONFIG_DATA_RETENTION, map[string]interface{}{
+	a.SendDiagnostic(TRACK_CONFIG_DATA_RETENTION, map[string]interface{}{
 		"enable_message_deletion": *cfg.DataRetentionSettings.EnableMessageDeletion,
 		"enable_file_deletion":    *cfg.DataRetentionSettings.EnableFileDeletion,
 		"message_retention_days":  *cfg.DataRetentionSettings.MessageRetentionDays,
 		"file_retention_days":     *cfg.DataRetentionSettings.FileRetentionDays,
 		"deletion_job_start_time": *cfg.DataRetentionSettings.DeletionJobStartTime,
 	})
+
+	a.SendDiagnostic(TRACK_CONFIG_MESSAGE_EXPORT, map[string]interface{}{
+		"enable_message_export":         *cfg.MessageExportSettings.EnableExport,
+		"daily_run_time":                *cfg.MessageExportSettings.DailyRunTime,
+		"default_export_from_timestamp": *cfg.MessageExportSettings.ExportFromTimestamp,
+		"batch_size":                    *cfg.MessageExportSettings.BatchSize,
+	})
 }
 
-func trackLicense() {
+func (a *App) trackLicense() {
 	if utils.IsLicensed() {
 		data := map[string]interface{}{
 			"customer_id": utils.License().Customer.Id,
@@ -487,7 +520,7 @@ func trackLicense() {
 			data["feature_"+featureName] = featureValue
 		}
 
-		SendDiagnostic(TRACK_LICENSE, data)
+		a.SendDiagnostic(TRACK_LICENSE, data)
 	}
 }
 
@@ -501,7 +534,7 @@ func (a *App) trackPlugins() {
 		backendInactiveCount := 0
 		settingsCount := 0
 
-		plugins, _ := a.GetPluginManifests()
+		plugins, _ := a.GetPlugins()
 
 		if plugins != nil {
 			totalActiveCount = len(plugins.Active)
@@ -537,7 +570,7 @@ func (a *App) trackPlugins() {
 			}
 		}
 
-		SendDiagnostic(TRACK_PLUGINS, map[string]interface{}{
+		a.SendDiagnostic(TRACK_PLUGINS, map[string]interface{}{
 			"active_plugins":           totalActiveCount,
 			"active_webapp_plugins":    webappActiveCount,
 			"active_backend_plugins":   backendActiveCount,
@@ -561,5 +594,5 @@ func (a *App) trackServer() {
 		data["system_admins"] = scr.Data.(int64)
 	}
 
-	SendDiagnostic(TRACK_SERVER, data)
+	a.SendDiagnostic(TRACK_SERVER, data)
 }

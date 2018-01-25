@@ -12,17 +12,13 @@ import (
 
 	"image/color/palette"
 
-	l4g "github.com/alecthomas/log4go"
 	"github.com/disintegration/imaging"
 	"github.com/gorilla/mux"
 	"github.com/mattermost/mattermost-server/app"
 	"github.com/mattermost/mattermost-server/model"
-	"github.com/mattermost/mattermost-server/utils"
 )
 
 func (api *API) InitEmoji() {
-	l4g.Debug(utils.T("api.emoji.init.debug"))
-
 	api.BaseRoutes.Emoji.Handle("/list", api.ApiUserRequired(getEmoji)).Methods("GET")
 	api.BaseRoutes.Emoji.Handle("/create", api.ApiUserRequired(createEmoji)).Methods("POST")
 	api.BaseRoutes.Emoji.Handle("/delete", api.ApiUserRequired(deleteEmoji)).Methods("POST")
@@ -35,7 +31,7 @@ func getEmoji(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	listEmoji, err := c.App.GetEmojiList(0, 100000)
+	listEmoji, err := c.App.GetEmojiList(0, 100000, "")
 	if err != nil {
 		c.Err = err
 		return

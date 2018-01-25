@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost-server/model"
+	"github.com/mattermost/mattermost-server/store"
 	"github.com/mattermost/mattermost-server/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +23,7 @@ func TestCreateUser(t *testing.T) {
 	Client := th.Client
 	AdminClient := th.SystemAdminClient
 
-	user := model.User{Email: GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
+	user := model.User{Email: th.GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
 
 	ruser, resp := Client.CreateUser(&user)
 	CheckNoError(t, resp)
@@ -51,7 +52,7 @@ func TestCreateUser(t *testing.T) {
 	CheckErrorMessage(t, resp, "store.sql_user.save.email_exists.app_error")
 	CheckBadRequestStatus(t, resp)
 
-	ruser.Email = GenerateTestEmail()
+	ruser.Email = th.GenerateTestEmail()
 	ruser.Username = user.Username
 	_, resp = Client.CreateUser(ruser)
 	CheckErrorMessage(t, resp, "store.sql_user.save.username_exists.app_error")
@@ -65,7 +66,7 @@ func TestCreateUser(t *testing.T) {
 	th.App.UpdateConfig(func(cfg *model.Config) { *cfg.TeamSettings.EnableOpenServer = false })
 	th.App.UpdateConfig(func(cfg *model.Config) { cfg.TeamSettings.EnableUserCreation = false })
 
-	user2 := &model.User{Email: GenerateTestEmail(), Password: "Password1", Username: GenerateTestUsername()}
+	user2 := &model.User{Email: th.GenerateTestEmail(), Password: "Password1", Username: GenerateTestUsername()}
 	_, resp = AdminClient.CreateUser(user2)
 	CheckNoError(t, resp)
 
@@ -86,7 +87,7 @@ func TestCreateUserWithHash(t *testing.T) {
 	Client := th.Client
 
 	t.Run("CreateWithHashHappyPath", func(t *testing.T) {
-		user := model.User{Email: GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
+		user := model.User{Email: th.GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
 		props := make(map[string]string)
 		props["email"] = user.Email
 		props["id"] = th.BasicTeam.Id
@@ -112,7 +113,7 @@ func TestCreateUserWithHash(t *testing.T) {
 	})
 
 	t.Run("NoHashAndNoData", func(t *testing.T) {
-		user := model.User{Email: GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
+		user := model.User{Email: th.GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
 		props := make(map[string]string)
 		props["email"] = user.Email
 		props["id"] = th.BasicTeam.Id
@@ -132,7 +133,7 @@ func TestCreateUserWithHash(t *testing.T) {
 	})
 
 	t.Run("HashExpired", func(t *testing.T) {
-		user := model.User{Email: GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
+		user := model.User{Email: th.GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
 		timeNow := time.Now()
 		past49Hours := timeNow.Add(-49*time.Hour).UnixNano() / int64(time.Millisecond)
 
@@ -151,7 +152,7 @@ func TestCreateUserWithHash(t *testing.T) {
 	})
 
 	t.Run("WrongHash", func(t *testing.T) {
-		user := model.User{Email: GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
+		user := model.User{Email: th.GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
 		props := make(map[string]string)
 		props["email"] = user.Email
 		props["id"] = th.BasicTeam.Id
@@ -167,7 +168,7 @@ func TestCreateUserWithHash(t *testing.T) {
 	})
 
 	t.Run("EnableUserCreationDisable", func(t *testing.T) {
-		user := model.User{Email: GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
+		user := model.User{Email: th.GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
 
 		props := make(map[string]string)
 		props["email"] = user.Email
@@ -188,7 +189,7 @@ func TestCreateUserWithHash(t *testing.T) {
 	})
 
 	t.Run("EnableOpenServerDisable", func(t *testing.T) {
-		user := model.User{Email: GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
+		user := model.User{Email: th.GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
 
 		props := make(map[string]string)
 		props["email"] = user.Email
@@ -224,7 +225,7 @@ func TestCreateUserWithInviteId(t *testing.T) {
 	AdminClient := th.SystemAdminClient
 
 	t.Run("CreateWithInviteIdHappyPath", func(t *testing.T) {
-		user := model.User{Email: GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
+		user := model.User{Email: th.GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
 
 		inviteId := th.BasicTeam.InviteId
 
@@ -244,7 +245,7 @@ func TestCreateUserWithInviteId(t *testing.T) {
 	})
 
 	t.Run("WrongInviteId", func(t *testing.T) {
-		user := model.User{Email: GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
+		user := model.User{Email: th.GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
 
 		inviteId := model.NewId()
 
@@ -254,7 +255,7 @@ func TestCreateUserWithInviteId(t *testing.T) {
 	})
 
 	t.Run("NoInviteId", func(t *testing.T) {
-		user := model.User{Email: GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
+		user := model.User{Email: th.GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
 
 		_, resp := Client.CreateUserWithInviteId(&user, "")
 		CheckBadRequestStatus(t, resp)
@@ -262,7 +263,7 @@ func TestCreateUserWithInviteId(t *testing.T) {
 	})
 
 	t.Run("ExpiredInviteId", func(t *testing.T) {
-		user := model.User{Email: GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
+		user := model.User{Email: th.GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
 
 		inviteId := th.BasicTeam.InviteId
 
@@ -276,7 +277,7 @@ func TestCreateUserWithInviteId(t *testing.T) {
 	})
 
 	t.Run("EnableUserCreationDisable", func(t *testing.T) {
-		user := model.User{Email: GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
+		user := model.User{Email: th.GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
 
 		th.App.UpdateConfig(func(cfg *model.Config) { cfg.TeamSettings.EnableUserCreation = false })
 
@@ -290,7 +291,7 @@ func TestCreateUserWithInviteId(t *testing.T) {
 	})
 
 	t.Run("EnableOpenServerDisable", func(t *testing.T) {
-		user := model.User{Email: GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
+		user := model.User{Email: th.GenerateTestEmail(), Nickname: "Corey Hulen", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
 
 		th.App.UpdateConfig(func(cfg *model.Config) { *cfg.TeamSettings.EnableOpenServer = false })
 
@@ -470,7 +471,7 @@ func TestGetUserByEmail(t *testing.T) {
 	_, resp = Client.GetUserByEmail(GenerateTestUsername(), "")
 	CheckBadRequestStatus(t, resp)
 
-	_, resp = Client.GetUserByEmail(GenerateTestEmail(), "")
+	_, resp = Client.GetUserByEmail(th.GenerateTestEmail(), "")
 	CheckNotFoundStatus(t, resp)
 
 	// Check against privacy config settings
@@ -963,7 +964,7 @@ func TestUpdateUser(t *testing.T) {
 	th.App.AddSessionToCache(session)
 
 	ruser.Id = user.Id
-	ruser.Email = GenerateTestEmail()
+	ruser.Email = th.GenerateTestEmail()
 	_, resp = Client.UpdateUser(ruser)
 	CheckForbiddenStatus(t, resp)
 
@@ -1046,7 +1047,7 @@ func TestPatchUser(t *testing.T) {
 	session.IsOAuth = true
 	th.App.AddSessionToCache(session)
 
-	patch.Email = model.NewString(GenerateTestEmail())
+	patch.Email = model.NewString(th.GenerateTestEmail())
 	_, resp = Client.PatchUser(user.Id, patch)
 	CheckForbiddenStatus(t, resp)
 
@@ -1060,6 +1061,68 @@ func TestPatchUser(t *testing.T) {
 
 	_, resp = th.SystemAdminClient.PatchUser(user.Id, patch)
 	CheckNoError(t, resp)
+}
+
+func TestUpdateUserAuth(t *testing.T) {
+	th := Setup().InitSystemAdmin().InitBasic()
+	defer th.TearDown()
+
+	Client := th.SystemAdminClient
+	team := th.CreateTeamWithClient(Client)
+
+	user := th.CreateUser()
+
+	th.LinkUserToTeam(user, team)
+	store.Must(th.App.Srv.Store.User().VerifyEmail(user.Id))
+
+	userAuth := &model.UserAuth{}
+	userAuth.AuthData = user.AuthData
+	userAuth.AuthService = user.AuthService
+	userAuth.Password = user.Password
+
+	// Regular user can not use endpoint
+	if _, err := th.Client.UpdateUserAuth(user.Id, userAuth); err == nil {
+		t.Fatal("Shouldn't have permissions. Only Admins")
+	}
+
+	userAuth.AuthData = model.NewString("test@test.com")
+	userAuth.AuthService = model.USER_AUTH_SERVICE_SAML
+	userAuth.Password = "newpassword"
+	ruser, resp := Client.UpdateUserAuth(user.Id, userAuth)
+	CheckNoError(t, resp)
+
+	// AuthData and AuthService are set, password is set to empty
+	if *ruser.AuthData != *userAuth.AuthData {
+		t.Fatal("Should have set the correct AuthData")
+	}
+	if ruser.AuthService != model.USER_AUTH_SERVICE_SAML {
+		t.Fatal("Should have set the correct AuthService")
+	}
+	if ruser.Password != "" {
+		t.Fatal("Password should be empty")
+	}
+
+	// When AuthData or AuthService are empty, password must be valid
+	userAuth.AuthData = user.AuthData
+	userAuth.AuthService = ""
+	userAuth.Password = "1"
+	if _, err := Client.UpdateUserAuth(user.Id, userAuth); err == nil {
+		t.Fatal("Should have errored - user password not valid")
+	}
+
+	// Regular user can not use endpoint
+	user2 := th.CreateUser()
+	th.LinkUserToTeam(user2, team)
+	store.Must(th.App.Srv.Store.User().VerifyEmail(user2.Id))
+
+	Client.Login(user2.Email, "passwd1")
+
+	userAuth.AuthData = user.AuthData
+	userAuth.AuthService = user.AuthService
+	userAuth.Password = user.Password
+	if _, err := Client.UpdateUserAuth(user.Id, userAuth); err == nil {
+		t.Fatal("Should have errored")
+	}
 }
 
 func TestDeleteUser(t *testing.T) {
@@ -1160,6 +1223,13 @@ func TestUpdateUserActive(t *testing.T) {
 
 	_, resp = SystemAdminClient.UpdateUserActive(user.Id, true)
 	CheckNoError(t, resp)
+
+	_, resp = SystemAdminClient.UpdateUserActive(user.Id, false)
+	CheckNoError(t, resp)
+
+	authData := model.NewId()
+	result := <-th.App.Srv.Store.User().UpdateAuthData(user.Id, "random", &authData, "", true)
+	require.Nil(t, result.Err)
 
 	_, resp = SystemAdminClient.UpdateUserActive(user.Id, false)
 	CheckNoError(t, resp)
@@ -2000,7 +2070,7 @@ func TestVerifyUserEmail(t *testing.T) {
 	defer th.TearDown()
 	Client := th.Client
 
-	user := model.User{Email: GenerateTestEmail(), Nickname: "Darth Vader", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
+	user := model.User{Email: th.GenerateTestEmail(), Nickname: "Darth Vader", Password: "hello1", Username: GenerateTestUsername(), Roles: model.SYSTEM_ADMIN_ROLE_ID + " " + model.SYSTEM_USER_ROLE_ID}
 
 	ruser, resp := Client.CreateUser(&user)
 
@@ -2035,7 +2105,7 @@ func TestSendVerificationEmail(t *testing.T) {
 	CheckBadRequestStatus(t, resp)
 
 	// Even non-existent emails should return 200 OK
-	_, resp = Client.SendVerificationEmail(GenerateTestEmail())
+	_, resp = Client.SendVerificationEmail(th.GenerateTestEmail())
 	CheckNoError(t, resp)
 
 	Client.Logout()
@@ -2116,6 +2186,59 @@ func TestSwitchAccount(t *testing.T) {
 	if link == "" {
 		t.Fatal("bad link")
 	}
+
+	isLicensed := utils.IsLicensed()
+	license := utils.License()
+	enableAuthenticationTransfer := *th.App.Config().ServiceSettings.ExperimentalEnableAuthenticationTransfer
+	defer func() {
+		utils.SetIsLicensed(isLicensed)
+		utils.SetLicense(license)
+		th.App.UpdateConfig(func(cfg *model.Config) {
+			*cfg.ServiceSettings.ExperimentalEnableAuthenticationTransfer = enableAuthenticationTransfer
+		})
+	}()
+	utils.SetIsLicensed(true)
+	utils.SetLicense(&model.License{Features: &model.Features{}})
+	utils.License().Features.SetDefaults()
+	th.App.UpdateConfig(func(cfg *model.Config) { *cfg.ServiceSettings.ExperimentalEnableAuthenticationTransfer = false })
+
+	sr = &model.SwitchRequest{
+		CurrentService: model.USER_AUTH_SERVICE_EMAIL,
+		NewService:     model.USER_AUTH_SERVICE_GITLAB,
+	}
+
+	_, resp = Client.SwitchAccountType(sr)
+	CheckForbiddenStatus(t, resp)
+
+	th.LoginBasic()
+
+	sr = &model.SwitchRequest{
+		CurrentService: model.USER_AUTH_SERVICE_SAML,
+		NewService:     model.USER_AUTH_SERVICE_EMAIL,
+		Email:          th.BasicUser.Email,
+		NewPassword:    th.BasicUser.Password,
+	}
+
+	_, resp = Client.SwitchAccountType(sr)
+	CheckForbiddenStatus(t, resp)
+
+	sr = &model.SwitchRequest{
+		CurrentService: model.USER_AUTH_SERVICE_EMAIL,
+		NewService:     model.USER_AUTH_SERVICE_LDAP,
+	}
+
+	_, resp = Client.SwitchAccountType(sr)
+	CheckForbiddenStatus(t, resp)
+
+	sr = &model.SwitchRequest{
+		CurrentService: model.USER_AUTH_SERVICE_LDAP,
+		NewService:     model.USER_AUTH_SERVICE_EMAIL,
+	}
+
+	_, resp = Client.SwitchAccountType(sr)
+	CheckForbiddenStatus(t, resp)
+
+	th.App.UpdateConfig(func(cfg *model.Config) { *cfg.ServiceSettings.ExperimentalEnableAuthenticationTransfer = true })
 
 	th.LoginBasic()
 
@@ -2327,6 +2450,69 @@ func TestGetUserAccessToken(t *testing.T) {
 	if len(rtokens) != 2 {
 		t.Fatal("should have 2 tokens")
 	}
+
+	_, resp = Client.GetUserAccessTokens(0, 100)
+	CheckForbiddenStatus(t, resp)
+
+	rtokens, resp = AdminClient.GetUserAccessTokens(1, 1)
+	CheckNoError(t, resp)
+
+	if len(rtokens) != 1 {
+		t.Fatal("should have 1 token")
+	}
+
+	rtokens, resp = AdminClient.GetUserAccessTokens(0, 2)
+	CheckNoError(t, resp)
+
+	if len(rtokens) != 2 {
+		t.Fatal("should have 2 tokens")
+	}
+}
+
+func TestSearchUserAccessToken(t *testing.T) {
+	th := Setup().InitBasic().InitSystemAdmin()
+	defer th.TearDown()
+	Client := th.Client
+	AdminClient := th.SystemAdminClient
+
+	testDescription := "test token"
+
+	th.App.UpdateConfig(func(cfg *model.Config) { *cfg.ServiceSettings.EnableUserAccessTokens = true })
+
+	th.App.UpdateUserRoles(th.BasicUser.Id, model.SYSTEM_USER_ROLE_ID+" "+model.SYSTEM_USER_ACCESS_TOKEN_ROLE_ID, false)
+	token, resp := Client.CreateUserAccessToken(th.BasicUser.Id, testDescription)
+	CheckNoError(t, resp)
+
+	_, resp = Client.SearchUserAccessTokens(&model.UserAccessTokenSearch{Term: token.Id})
+	CheckForbiddenStatus(t, resp)
+
+	rtokens, resp := AdminClient.SearchUserAccessTokens(&model.UserAccessTokenSearch{Term: th.BasicUser.Id})
+	CheckNoError(t, resp)
+
+	if len(rtokens) != 1 {
+		t.Fatal("should have 1 tokens")
+	}
+
+	rtokens, resp = AdminClient.SearchUserAccessTokens(&model.UserAccessTokenSearch{Term: token.Id})
+	CheckNoError(t, resp)
+
+	if len(rtokens) != 1 {
+		t.Fatal("should have 1 tokens")
+	}
+
+	rtokens, resp = AdminClient.SearchUserAccessTokens(&model.UserAccessTokenSearch{Term: th.BasicUser.Username})
+	CheckNoError(t, resp)
+
+	if len(rtokens) != 1 {
+		t.Fatal("should have 1 tokens")
+	}
+
+	rtokens, resp = AdminClient.SearchUserAccessTokens(&model.UserAccessTokenSearch{Term: "not found"})
+	CheckNoError(t, resp)
+
+	if len(rtokens) != 0 {
+		t.Fatal("should have 0 tokens")
+	}
 }
 
 func TestRevokeUserAccessToken(t *testing.T) {
@@ -2381,8 +2567,6 @@ func TestDisableUserAccessToken(t *testing.T) {
 
 	testDescription := "test token"
 
-	enableUserAccessTokens := *th.App.Config().ServiceSettings.EnableUserAccessTokens
-	defer th.App.UpdateConfig(func(cfg *model.Config) { *cfg.ServiceSettings.EnableUserAccessTokens = enableUserAccessTokens })
 	*th.App.Config().ServiceSettings.EnableUserAccessTokens = true
 
 	th.App.UpdateUserRoles(th.BasicUser.Id, model.SYSTEM_USER_ROLE_ID+" "+model.SYSTEM_USER_ACCESS_TOKEN_ROLE_ID, false)
@@ -2426,8 +2610,6 @@ func TestEnableUserAccessToken(t *testing.T) {
 
 	testDescription := "test token"
 
-	enableUserAccessTokens := *th.App.Config().ServiceSettings.EnableUserAccessTokens
-	defer th.App.UpdateConfig(func(cfg *model.Config) { *cfg.ServiceSettings.EnableUserAccessTokens = enableUserAccessTokens })
 	*th.App.Config().ServiceSettings.EnableUserAccessTokens = true
 
 	th.App.UpdateUserRoles(th.BasicUser.Id, model.SYSTEM_USER_ROLE_ID+" "+model.SYSTEM_USER_ACCESS_TOKEN_ROLE_ID, false)

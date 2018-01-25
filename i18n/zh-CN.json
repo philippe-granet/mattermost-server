@@ -700,6 +700,57 @@
     "translation": "展开预览时发生了错误"
   },
   {
+    "id": "api.command_groupmsg.desc",
+    "translation": "发送群消息到指定的用户"
+  },
+  {
+    "id": "api.command_groupmsg.fail.app_error",
+    "translation": "发送消息给用户时发生错误。"
+  },
+  {
+    "id": "api.command_groupmsg.group_fail.app_error",
+    "translation": "创建群消息时发生错误。"
+  },
+  {
+    "id": "api.command_groupmsg.hint",
+    "translation": "@[用户名1],@[用户名2] '消息'"
+  },
+  {
+    "id": "api.command_groupmsg.invalid_user.app_error",
+    "translation": {
+      "one": "我们无法找到用户：{{.Users}}我们无法找到用户：{{.Users}}",
+      "other": ""
+    }
+  },
+  {
+    "id": "api.command_groupmsg.invalid_users.app_error",
+    "translation": "无法找到用户：%s"
+  },
+  {
+    "id": "api.command_groupmsg.list.app_error",
+    "translation": "列出用户时出错。"
+  },
+  {
+    "id": "api.command_groupmsg.max_users.app_error",
+    "translation": "群消息最多 {{.MaxUsers}} 用户。"
+  },
+  {
+    "id": "api.command_groupmsg.min_users.app_error",
+    "translation": "群消息最少 {{.MinUsers}} 用户。"
+  },
+  {
+    "id": "api.command_groupmsg.missing.app_error",
+    "translation": "无法找到用户"
+  },
+  {
+    "id": "api.command_groupmsg.name",
+    "translation": "消息"
+  },
+  {
+    "id": "api.command_groupmsg.success",
+    "translation": "消息已发送给用户。"
+  },
+  {
     "id": "api.command_help.desc",
     "translation": "打开 Mattermost 帮助页面"
   },
@@ -1282,6 +1333,10 @@
     "translation": "文件存储没有正确配置。请配置S3或本地文件存储服务。"
   },
   {
+    "id": "api.file.move_file.copy_within_s3.app_error",
+    "translation": "无法在 S3 内复制文件。"
+  },
+  {
     "id": "api.file.move_file.delete_from_s3.app_error",
     "translation": "不能从S3上删除文件。"
   },
@@ -1366,8 +1421,12 @@
     "translation": "设置电子邮件验证失败 err=%v"
   },
   {
-    "id": "api.incoming_webhook.disabled.app_errror",
+    "id": "api.incoming_webhook.disabled.app_error",
     "translation": "传入的 webhooks 已被系统管理员禁用。"
+  },
+  {
+    "id": "api.incoming_webhook.invalid_username.app_error",
+    "translation": "无效用户名。"
   },
   {
     "id": "api.ldap.init.debug",
@@ -2116,6 +2175,10 @@
     "translation": "运行中的 goroutine 数量 %v 已经超过健康界限 %v"
   },
   {
+    "id": "api.team.add_user_to_team.added",
+    "translation": "%v 由 %v 邀请加入到团队"
+  },
+  {
     "id": "api.team.add_user_to_team.missing_parameter.app_error",
     "translation": "添加用户到团队所需的参数。"
   },
@@ -2228,6 +2291,14 @@
     "translation": "电子邮件必须来自指定域名 (例如 @example.com)。详情请询问您的系统管理员。"
   },
   {
+    "id": "api.team.join_team.post_and_forget",
+    "translation": "%v 已加入团队。"
+  },
+  {
+    "id": "api.team.leave.left",
+    "translation": "%v 离开了团队。"
+  },
+  {
     "id": "api.team.permanent_delete_team.attempting.warn",
     "translation": "试图永久删除团队 %v id=%v"
   },
@@ -2238,6 +2309,10 @@
   {
     "id": "api.team.remove_user_from_team.missing.app_error",
     "translation": "此用户似乎不属于此团队。"
+  },
+  {
+    "id": "api.team.remove_user_from_team.removed",
+    "translation": "%v 已从频道移出。"
   },
   {
     "id": "api.team.signup_team.email_disabled.app_error",
@@ -3524,12 +3599,24 @@
     "translation": "无法获取已启动的插件"
   },
   {
+    "id": "app.plugin.id_length.app_error",
+    "translation": "插件 Id 必须小于 {{.Max}} 个字符。"
+  },
+  {
+    "id": "app.plugin.install.app_error",
+    "translation": "无法安装插件。"
+  },
+  {
+    "id": "app.plugin.install_id.app_error",
+    "translation": "无法安装插件。已存在相同 ID 的插件。"
+  },
+  {
     "id": "app.plugin.manifest.app_error",
     "translation": "无法在解压的插件里找到 manifest 档"
   },
   {
     "id": "app.plugin.mvdir.app_error",
-    "translation": "无法移动插件从临时目录到最终目录"
+    "translation": "无法移动插件从临时目录到最终目录。可能因为已有其他插件使用同样的目录名。"
   },
   {
     "id": "app.plugin.not_installed.app_error",
@@ -3617,11 +3704,11 @@
   },
   {
     "id": "authentication.permissions.revoke_user_access_token.description",
-    "translation": "允许撤销个人访问令牌"
+    "translation": "允许吊销个人访问令牌"
   },
   {
     "id": "authentication.permissions.revoke_user_access_token.name",
-    "translation": "撤销个人访问令牌"
+    "translation": "吊销个人访问令牌"
   },
   {
     "id": "authentication.permissions.team_invite_user.description",
@@ -3657,7 +3744,7 @@
   },
   {
     "id": "authentication.roles.system_user_access_token.description",
-    "translation": "一个允许创建、查看、撤销个人访问令牌的角色"
+    "translation": "一个允许创建、查看、吊销个人访问令牌的角色"
   },
   {
     "id": "authentication.roles.system_user_access_token.name",
@@ -3864,8 +3951,16 @@
     "translation": "创建 Elasticsearch 批量处理器失败"
   },
   {
+    "id": "ent.elasticsearch.start.create_bulk_processor_failed.app_error",
+    "translation": "创建 Elasticsearch 批量处理器失败"
+  },
+  {
     "id": "ent.elasticsearch.start.index_settings_failed",
     "translation": "无法设置 ElasticSearch 索引设定"
+  },
+  {
+    "id": "ent.elasticsearch.start.start_bulk_processor_failed.app_error",
+    "translation": "开始 Elasticsearch 批量处理器失败"
   },
   {
     "id": "ent.elasticsearch.start.start_bulk_processor_failed.app_error",
@@ -3958,6 +4053,10 @@
   {
     "id": "ent.ldap.validate_filter.app_error",
     "translation": "无效的 AD/LDAP 筛选器"
+  },
+  {
+    "id": "ent.message_export.generic.license.error",
+    "translation": "许可证不支持消息导出。"
   },
   {
     "id": "ent.metrics.starting.info",
@@ -4296,6 +4395,26 @@
     "translation": "无效用户id"
   },
   {
+    "id": "model.channel_member_history.is_valid.channel_id.app_error",
+    "translation": "无效的频道 id"
+  },
+  {
+    "id": "model.channel_member_history.is_valid.join_time.app_error",
+    "translation": "无效的加入时间"
+  },
+  {
+    "id": "model.channel_member_history.is_valid.leave_time.app_error",
+    "translation": "无效的离开时间"
+  },
+  {
+    "id": "model.channel_member_history.is_valid.user_email.app_error",
+    "translation": "无效用户邮箱"
+  },
+  {
+    "id": "model.channel_member_history.is_valid.user_id.app_error",
+    "translation": "无效用户 id"
+  },
+  {
     "id": "model.client.connecting.app_error",
     "translation": "在连接到服务器时，我们遇到了一个错误"
   },
@@ -4373,7 +4492,7 @@
   },
   {
     "id": "model.command.is_valid.display_name.app_error",
-    "translation": "无效的显示名称"
+    "translation": "无效的标题"
   },
   {
     "id": "model.command.is_valid.id.app_error",
@@ -4664,6 +4783,30 @@
     "translation": "团队设置中每团队的最大用户数无效。必须是正整数。"
   },
   {
+    "id": "model.config.is_valid.message_export.batch_size.app_error",
+    "translation": "消息导出任务 BatchSize 必须为正整数"
+  },
+  {
+    "id": "model.config.is_valid.message_export.daily_runtime.app_error",
+    "translation": "消息导出任务 DailyRuntime 必须为 24 小时制 HH:MM 格式。"
+  },
+  {
+    "id": "model.config.is_valid.message_export.enable.app_error",
+    "translation": "消息导出任务 EnableExport 设置必须为是或否"
+  },
+  {
+    "id": "model.config.is_valid.message_export.export_from.app_error",
+    "translation": "消息导出任务 ExportFromTimestamp 必须为时间戳 (unix 时间)。只有在此时间后发送的消息会被导出。"
+  },
+  {
+    "id": "model.config.is_valid.message_export.file_location.app_error",
+    "translation": "消息导出任务 FileLocation 比如为可写的目录"
+  },
+  {
+    "id": "model.config.is_valid.message_export.file_location.relative",
+    "translation": "消息导出任务 FileLocation 必须为 FileSettings.Directory 的子目录"
+  },
+  {
     "id": "model.config.is_valid.password_length.app_error",
     "translation": "最短密码长度必须为整数大于或等于 {{.MinLength}} 以及小于或等于 {{.MaxLength}}。"
   },
@@ -4833,7 +4976,11 @@
   },
   {
     "id": "model.incoming_hook.display_name.app_error",
-    "translation": "无效显示名"
+    "translation": "无效的标题"
+  },
+  {
+    "id": "model.incoming_hook.icon_url.app_error",
+    "translation": "无效消息图标"
   },
   {
     "id": "model.incoming_hook.id.app_error",
@@ -4850,6 +4997,10 @@
   {
     "id": "model.incoming_hook.user_id.app_error",
     "translation": "无效用户id"
+  },
+  {
+    "id": "model.incoming_hook.username.app_error",
+    "translation": "无效用户名"
   },
   {
     "id": "model.job.is_valid.create_at.app_error",
@@ -4925,7 +5076,7 @@
   },
   {
     "id": "model.outgoing_hook.is_valid.display_name.app_error",
-    "translation": "无效显示名"
+    "translation": "无效的标题"
   },
   {
     "id": "model.outgoing_hook.is_valid.id.app_error",
@@ -4958,6 +5109,26 @@
   {
     "id": "model.outgoing_hook.is_valid.words.app_error",
     "translation": "无效的触发关键词"
+  },
+  {
+    "id": "model.plugin_command.error.app_error",
+    "translation": "执行此指令时发生了错误。"
+  },
+  {
+    "id": "model.plugin_key_value.is_valid.key.app_error",
+    "translation": "无效键，必须为 {{.Min}} 至 {{.Max}} 个字符。"
+  },
+  {
+    "id": "model.plugin_key_value.is_valid.key.app_error",
+    "translation": "无效键，必须为 {{.Min}} 至 {{.Max}} 个字符。"
+  },
+  {
+    "id": "model.plugin_key_value.is_valid.plugin_id.app_error",
+    "translation": "无效插件 ID，必须为 {{.Min}} 至 {{.Max}} 个字符。"
+  },
+  {
+    "id": "model.plugin_key_value.is_valid.plugin_id.app_error",
+    "translation": "无效插件 ID，必须为 {{.Min}} 至 {{.Max}} 个字符。"
   },
   {
     "id": "model.post.is_valid.channel_id.app_error",
@@ -5656,6 +5827,34 @@
     "translation": "我们更新频道成员遇到了一个错误"
   },
   {
+    "id": "store.sql_channel_member_history.get_all.app_error",
+    "translation": "获取记录失败"
+  },
+  {
+    "id": "store.sql_channel_member_history.get_users_in_channel_at.app_error",
+    "translation": "获取频道指定时间的用户失败"
+  },
+  {
+    "id": "store.sql_channel_member_history.get_users_in_channel_during.app_error",
+    "translation": "获取频道在指定时间段的用户失败"
+  },
+  {
+    "id": "store.sql_channel_member_history.log_join_event.app_error",
+    "translation": "记录频道成员历史失败"
+  },
+  {
+    "id": "store.sql_channel_member_history.log_leave_event.select_error",
+    "translation": "记录频道成员历史失败。没找到加入记录"
+  },
+  {
+    "id": "store.sql_channel_member_history.log_leave_event.update_error",
+    "translation": "记录频道成员历史失败。更新加入记录失败"
+  },
+  {
+    "id": "store.sql_channel_member_history.permanent_delete_batch.app_error",
+    "translation": "清理记录失败"
+  },
+  {
     "id": "store.sql_command.analytics_command_count.app_error",
     "translation": "我们无法计算指令数量"
   },
@@ -5714,6 +5913,10 @@
   {
     "id": "store.sql_compliance.get.finding.app_error",
     "translation": "我们获取合规报告时遇到错误"
+  },
+  {
+    "id": "store.sql_compliance.message_export.app_error",
+    "translation": "选择消息导出数据失败"
   },
   {
     "id": "store.sql_compliance.save.saving.app_error",
@@ -5918,6 +6121,22 @@
   {
     "id": "store.sql_oauth.update_app.updating.app_error",
     "translation": "我们更新这个app出现一个错误"
+  },
+  {
+    "id": "store.sql_plugin_store.delete.app_error",
+    "translation": "无法删除插件键值"
+  },
+  {
+    "id": "store.sql_plugin_store.get.app_error",
+    "translation": "无法获取插件键值"
+  },
+  {
+    "id": "store.sql_plugin_store.save.app_error",
+    "translation": "无法保存或更新插件键值"
+  },
+  {
+    "id": "store.sql_plugin_store.save_unique.app_error",
+    "translation": "因违反独特的约束而无法保存或更新插件键值"
   },
   {
     "id": "store.sql_post.analytics_posts_count.app_error",

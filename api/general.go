@@ -8,22 +8,17 @@ import (
 	"net/http"
 	"strings"
 
-	l4g "github.com/alecthomas/log4go"
-
 	"github.com/mattermost/mattermost-server/model"
-	"github.com/mattermost/mattermost-server/utils"
 )
 
 func (api *API) InitGeneral() {
-	l4g.Debug(utils.T("api.general.init.debug"))
-
 	api.BaseRoutes.General.Handle("/client_props", api.ApiAppHandler(getClientConfig)).Methods("GET")
 	api.BaseRoutes.General.Handle("/log_client", api.ApiAppHandler(logClient)).Methods("POST")
 	api.BaseRoutes.General.Handle("/ping", api.ApiAppHandler(ping)).Methods("GET")
 }
 
 func getClientConfig(c *Context, w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(model.MapToJson(utils.ClientCfg)))
+	w.Write([]byte(model.MapToJson(c.App.ClientConfig())))
 }
 
 func logClient(c *Context, w http.ResponseWriter, r *http.Request) {

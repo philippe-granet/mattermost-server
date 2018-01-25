@@ -8,10 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	l4g "github.com/alecthomas/log4go"
 	"github.com/gorilla/mux"
 
-	"github.com/mattermost/mattermost-server/app"
 	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/utils"
 )
@@ -21,8 +19,6 @@ const OPEN_GRAPH_METADATA_CACHE_SIZE = 10000
 var openGraphDataCache = utils.NewLru(OPEN_GRAPH_METADATA_CACHE_SIZE)
 
 func (api *API) InitPost() {
-	l4g.Debug(utils.T("api.post.init.debug"))
-
 	api.BaseRoutes.ApiRoot.Handle("/get_opengraph_metadata", api.ApiUserRequired(getOpenGraphMetadata)).Methods("POST")
 
 	api.BaseRoutes.NeedTeam.Handle("/posts/search", api.ApiUserRequiredActivity(searchPosts, true)).Methods("POST")
@@ -139,7 +135,7 @@ func saveIsPinnedPost(c *Context, w http.ResponseWriter, r *http.Request, isPinn
 			rpost := result.Data.(*model.Post)
 
 			message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_POST_EDITED, "", rpost.ChannelId, "", nil)
-			message.Add("post", rpost.ToJson())
+			message.Add("post", c.App.PostWithProxyAddedToImageURLs(rpost).ToJson())
 
 			c.App.Go(func() {
 				c.App.Publish(message)
@@ -554,7 +550,7 @@ func getOpenGraphMetadata(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	og := app.GetOpenGraphMetadata(url)
+	og := c.App.GetOpenGraphMetadata(url)
 
 	ogJSON, err := og.ToJSON()
 	openGraphDataCache.AddWithExpiresInSecs(props["url"], ogJSON, 3600) // Cache would expire after 1 hour

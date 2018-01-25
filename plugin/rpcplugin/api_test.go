@@ -2,12 +2,14 @@ package rpcplugin
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/plugin"
@@ -34,7 +36,8 @@ func testAPIRPC(api plugin.API, f func(plugin.API)) {
 }
 
 func TestAPI(t *testing.T) {
-	var api plugintest.API
+	keyValueStore := &plugintest.KeyValueStore{}
+	api := plugintest.API{Store: keyValueStore}
 	defer api.AssertExpectations(t)
 
 	type Config struct {
@@ -53,6 +56,11 @@ func TestAPI(t *testing.T) {
 		Id: "thechannelid",
 	}
 
+	testChannelMember := &model.ChannelMember{
+		ChannelId: "thechannelid",
+		UserId:    "theuserid",
+	}
+
 	testTeam := &model.Team{
 		Id: "theteamid",
 	}
@@ -64,6 +72,11 @@ func TestAPI(t *testing.T) {
 
 	testPost := &model.Post{
 		Message: "hello",
+		Props: map[string]interface{}{
+			"attachments": []*model.SlackAttachment{
+				&model.SlackAttachment{},
+			},
+		},
 	}
 
 	testAPIRPC(&api, func(remote plugin.API) {
@@ -71,6 +84,16 @@ func TestAPI(t *testing.T) {
 		assert.NoError(t, remote.LoadPluginConfiguration(&config))
 		assert.Equal(t, "foo", config.Foo)
 		assert.Equal(t, "baz", config.Bar.Baz)
+
+		api.On("RegisterCommand", mock.AnythingOfType("*model.Command")).Return(fmt.Errorf("foo")).Once()
+		assert.Error(t, remote.RegisterCommand(&model.Command{}))
+		api.On("RegisterCommand", mock.AnythingOfType("*model.Command")).Return(nil).Once()
+		assert.NoError(t, remote.RegisterCommand(&model.Command{}))
+
+		api.On("UnregisterCommand", "team", "trigger").Return(fmt.Errorf("foo")).Once()
+		assert.Error(t, remote.UnregisterCommand("team", "trigger"))
+		api.On("UnregisterCommand", "team", "trigger").Return(nil).Once()
+		assert.NoError(t, remote.UnregisterCommand("team", "trigger"))
 
 		api.On("CreateChannel", mock.AnythingOfType("*model.Channel")).Return(func(c *model.Channel) (*model.Channel, *model.AppError) {
 			c.Id = "thechannelid"
@@ -108,6 +131,11 @@ func TestAPI(t *testing.T) {
 		}).Once()
 		channel, err = remote.UpdateChannel(testChannel)
 		assert.Equal(t, testChannel, channel)
+		assert.Nil(t, err)
+
+		api.On("GetChannelMember", "thechannelid", "theuserid").Return(testChannelMember, nil).Once()
+		member, err := remote.GetChannelMember("thechannelid", "theuserid")
+		assert.Equal(t, testChannelMember, member)
 		assert.Nil(t, err)
 
 		api.On("CreateUser", mock.AnythingOfType("*model.User")).Return(func(u *model.User) (*model.User, *model.AppError) {
@@ -181,9 +209,9 @@ func TestAPI(t *testing.T) {
 			return p, nil
 		}).Once()
 		post, err := remote.CreatePost(testPost)
+		require.Nil(t, err)
 		assert.NotEmpty(t, post.Id)
 		assert.Equal(t, testPost.Message, post.Message)
-		assert.Nil(t, err)
 
 		api.On("DeletePost", "thepostid").Return(nil).Once()
 		assert.Nil(t, remote.DeletePost("thepostid"))
@@ -198,6 +226,21 @@ func TestAPI(t *testing.T) {
 		}).Once()
 		post, err = remote.UpdatePost(testPost)
 		assert.Equal(t, testPost, post)
+		assert.Nil(t, err)
+
+		api.KeyValueStore().(*plugintest.KeyValueStore).On("Set", "thekey", []byte("thevalue")).Return(nil).Once()
+		err = remote.KeyValueStore().Set("thekey", []byte("thevalue"))
+		assert.Nil(t, err)
+
+		api.KeyValueStore().(*plugintest.KeyValueStore).On("Get", "thekey").Return(func(key string) ([]byte, *model.AppError) {
+			return []byte("thevalue"), nil
+		}).Once()
+		ret, err := remote.KeyValueStore().Get("thekey")
+		assert.Nil(t, err)
+		assert.Equal(t, []byte("thevalue"), ret)
+
+		api.KeyValueStore().(*plugintest.KeyValueStore).On("Delete", "thekey").Return(nil).Once()
+		err = remote.KeyValueStore().Delete("thekey")
 		assert.Nil(t, err)
 	})
 }

@@ -8,12 +8,9 @@ import (
 
 	l4g "github.com/alecthomas/log4go"
 	"github.com/mattermost/mattermost-server/model"
-	"github.com/mattermost/mattermost-server/utils"
 )
 
 func (api *API) InitChannel() {
-	l4g.Debug(utils.T("api.channel.init.debug"))
-
 	api.BaseRoutes.Channels.Handle("", api.ApiSessionRequired(createChannel)).Methods("POST")
 	api.BaseRoutes.Channels.Handle("/direct", api.ApiSessionRequired(createDirectChannel)).Methods("POST")
 	api.BaseRoutes.Channels.Handle("/group", api.ApiSessionRequired(createGroupChannel)).Methods("POST")
@@ -389,7 +386,7 @@ func getPinnedPosts(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		w.Header().Set(model.HEADER_ETAG_SERVER, posts.Etag())
-		w.Write([]byte(posts.ToJson()))
+		w.Write([]byte(c.App.PostListWithProxyAddedToImageURLs(posts).ToJson()))
 	}
 }
 

@@ -6,14 +6,10 @@ package api
 import (
 	"net/http"
 
-	l4g "github.com/alecthomas/log4go"
 	"github.com/mattermost/mattermost-server/model"
-	"github.com/mattermost/mattermost-server/utils"
 )
 
 func (api *API) InitWebhook() {
-	l4g.Debug(utils.T("api.webhook.init.debug"))
-
 	api.BaseRoutes.Hooks.Handle("/incoming/create", api.ApiUserRequired(createIncomingHook)).Methods("POST")
 	api.BaseRoutes.Hooks.Handle("/incoming/update", api.ApiUserRequired(updateIncomingHook)).Methods("POST")
 	api.BaseRoutes.Hooks.Handle("/incoming/delete", api.ApiUserRequired(deleteIncomingHook)).Methods("POST")
@@ -88,7 +84,7 @@ func updateIncomingHook(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if c.Session.UserId != hook.UserId && !c.App.SessionHasPermissionToTeam(c.Session, oldHook.TeamId, model.PERMISSION_MANAGE_OTHERS_WEBHOOKS) {
+	if c.Session.UserId != oldHook.UserId && !c.App.SessionHasPermissionToTeam(c.Session, oldHook.TeamId, model.PERMISSION_MANAGE_OTHERS_WEBHOOKS) {
 		c.LogAudit("fail - inappropriate permissions")
 		c.SetPermissionError(model.PERMISSION_MANAGE_OTHERS_WEBHOOKS)
 		return

@@ -5,12 +5,15 @@ package app
 
 import (
 	"html/template"
+	"net"
 	"net/http"
-	"runtime/debug"
+	"strings"
+	"sync"
 	"sync/atomic"
 
 	l4g "github.com/alecthomas/log4go"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-server/einterfaces"
 	ejobs "github.com/mattermost/mattermost-server/einterfaces/jobs"
@@ -46,24 +49,38 @@ type App struct {
 	Elasticsearch    einterfaces.ElasticsearchInterface
 	Emoji            einterfaces.EmojiInterface
 	Ldap             einterfaces.LdapInterface
+	MessageExport    einterfaces.MessageExportInterface
 	Metrics          einterfaces.MetricsInterface
 	Mfa              einterfaces.MfaInterface
 	Saml             einterfaces.SamlInterface
 
-	configFile string
-	newStore   func() store.Store
+	config          atomic.Value
+	configFile      string
+	configListeners map[string]func(*model.Config, *model.Config)
+
+	newStore func() store.Store
 
 	htmlTemplateWatcher *utils.HTMLTemplateWatcher
 	sessionCache        *utils.Cache
 	roles               map[string]*model.Role
 	configListenerId    string
+	licenseListenerId   string
+	disableConfigWatch  bool
+	configWatcher       *utils.ConfigWatcher
+
+	pluginCommands     []*PluginCommand
+	pluginCommandsLock sync.RWMutex
+
+	clientConfig     map[string]string
+	clientConfigHash string
+	diagnosticId     string
 }
 
 var appCount = 0
 
 // New creates a new App. You must call Shutdown when you're done with it.
 // XXX: For now, only one at a time is allowed as some resources are still shared.
-func New(options ...Option) *App {
+func New(options ...Option) (*App, error) {
 	appCount++
 	if appCount > 1 {
 		panic("Only one App should exist at a time. Did you forget to call Shutdown()?")
@@ -74,8 +91,10 @@ func New(options ...Option) *App {
 		Srv: &Server{
 			Router: mux.NewRouter(),
 		},
-		sessionCache: utils.NewLru(model.SESSION_CACHE_SIZE),
-		configFile:   "config.json",
+		sessionCache:    utils.NewLru(model.SESSION_CACHE_SIZE),
+		configFile:      "config.json",
+		configListeners: make(map[string]func(*model.Config, *model.Config)),
+		clientConfig:    make(map[string]string),
 	}
 
 	for _, option := range options {
@@ -83,14 +102,24 @@ func New(options ...Option) *App {
 	}
 
 	if utils.T == nil {
-		utils.TranslationsPreInit()
+		if err := utils.TranslationsPreInit(); err != nil {
+			return nil, errors.Wrapf(err, "unable to load Mattermost translation files")
+		}
 	}
-	utils.LoadGlobalConfig(app.configFile)
-	utils.InitTranslations(utils.Cfg.LocalizationSettings)
+	model.AppErrorInit(utils.T)
+	if err := app.LoadConfig(app.configFile); err != nil {
+		return nil, err
+	}
+	app.EnableConfigWatch()
+	if err := utils.InitTranslations(app.Config().LocalizationSettings); err != nil {
+		return nil, errors.Wrapf(err, "unable to load Mattermost translation files")
+	}
 
-	app.configListenerId = utils.AddConfigListener(func(_, cfg *model.Config) {
-		app.SetDefaultRolesBasedOnConfig()
+	app.configListenerId = app.AddConfigListener(func(_, _ *model.Config) {
+		app.configOrLicenseListener()
 	})
+	app.licenseListenerId = utils.AddLicenseListener(app.configOrLicenseListener)
+	app.regenerateClientConfig()
 	app.SetDefaultRolesBasedOnConfig()
 
 	l4g.Info(utils.T("api.server.new_server.init.info"))
@@ -123,7 +152,12 @@ func New(options ...Option) *App {
 		handlers: make(map[string]webSocketHandler),
 	}
 
-	return app
+	return app, nil
+}
+
+func (a *App) configOrLicenseListener() {
+	a.regenerateClientConfig()
+	a.SetDefaultRolesBasedOnConfig()
 }
 
 func (a *App) Shutdown() {
@@ -144,8 +178,11 @@ func (a *App) Shutdown() {
 		a.htmlTemplateWatcher.Close()
 	}
 
-	utils.RemoveConfigListener(a.configListenerId)
+	a.RemoveConfigListener(a.configListenerId)
+	utils.RemoveLicenseListener(a.licenseListenerId)
 	l4g.Info(utils.T("api.server.stop_server.stopped.info"))
+
+	a.DisableConfigWatch()
 }
 
 var accountMigrationInterface func(*App) einterfaces.AccountMigrationInterface
@@ -196,6 +233,12 @@ func RegisterJobsDataRetentionJobInterface(f func(*App) ejobs.DataRetentionJobIn
 	jobsDataRetentionJobInterface = f
 }
 
+var jobsMessageExportJobInterface func(*App) ejobs.MessageExportJobInterface
+
+func RegisterJobsMessageExportJobInterface(f func(*App) ejobs.MessageExportJobInterface) {
+	jobsMessageExportJobInterface = f
+}
+
 var jobsElasticsearchAggregatorInterface func(*App) ejobs.ElasticsearchAggregatorInterface
 
 func RegisterJobsElasticsearchAggregatorInterface(f func(*App) ejobs.ElasticsearchAggregatorInterface) {
@@ -218,6 +261,12 @@ var ldapInterface func(*App) einterfaces.LdapInterface
 
 func RegisterLdapInterface(f func(*App) einterfaces.LdapInterface) {
 	ldapInterface = f
+}
+
+var messageExportInterface func(*App) einterfaces.MessageExportInterface
+
+func RegisterMessageExportInterface(f func(*App) einterfaces.MessageExportInterface) {
+	messageExportInterface = f
 }
 
 var metricsInterface func(*App) einterfaces.MetricsInterface
@@ -259,11 +308,14 @@ func (a *App) initEnterprise() {
 	}
 	if ldapInterface != nil {
 		a.Ldap = ldapInterface(a)
-		utils.AddConfigListener(func(_, cfg *model.Config) {
+		a.AddConfigListener(func(_, cfg *model.Config) {
 			if err := utils.ValidateLdapFilter(cfg, a.Ldap); err != nil {
 				panic(utils.T(err.Id))
 			}
 		})
+	}
+	if messageExportInterface != nil {
+		a.MessageExport = messageExportInterface(a)
 	}
 	if metricsInterface != nil {
 		a.Metrics = metricsInterface(a)
@@ -273,7 +325,7 @@ func (a *App) initEnterprise() {
 	}
 	if samlInterface != nil {
 		a.Saml = samlInterface(a)
-		utils.AddConfigListener(func(_, cfg *model.Config) {
+		a.AddConfigListener(func(_, cfg *model.Config) {
 			a.Saml.ConfigureSP()
 		})
 	}
@@ -283,9 +335,12 @@ func (a *App) initEnterprise() {
 }
 
 func (a *App) initJobs() {
-	a.Jobs = jobs.NewJobServer(a.Config, a.Srv.Store)
+	a.Jobs = jobs.NewJobServer(a, a.Srv.Store)
 	if jobsDataRetentionJobInterface != nil {
 		a.Jobs.DataRetentionJob = jobsDataRetentionJobInterface(a)
+	}
+	if jobsMessageExportJobInterface != nil {
+		a.Jobs.MessageExportJob = jobsMessageExportJobInterface(a)
 	}
 	if jobsElasticsearchAggregatorInterface != nil {
 		a.Jobs.ElasticsearchAggregator = jobsElasticsearchAggregatorInterface(a)
@@ -298,30 +353,30 @@ func (a *App) initJobs() {
 	}
 }
 
-func (a *App) Config() *model.Config {
-	return utils.Cfg
+func (a *App) DiagnosticId() string {
+	return a.diagnosticId
 }
 
-func (a *App) UpdateConfig(f func(*model.Config)) {
-	old := utils.Cfg.Clone()
-	f(utils.Cfg)
-	utils.InvokeGlobalConfigListeners(old, utils.Cfg)
+func (a *App) SetDiagnosticId(id string) {
+	a.diagnosticId = id
 }
 
-func (a *App) PersistConfig() {
-	utils.SaveConfig(a.ConfigFileName(), a.Config())
-}
+func (a *App) EnsureDiagnosticId() {
+	if a.diagnosticId != "" {
+		return
+	}
+	if result := <-a.Srv.Store.System().Get(); result.Err == nil {
+		props := result.Data.(model.StringMap)
 
-func (a *App) ReloadConfig() {
-	debug.FreeOSMemory()
-	utils.LoadGlobalConfig(a.ConfigFileName())
+		id := props[model.SYSTEM_DIAGNOSTIC_ID]
+		if len(id) == 0 {
+			id = model.NewId()
+			systemId := &model.System{Name: model.SYSTEM_DIAGNOSTIC_ID, Value: id}
+			<-a.Srv.Store.System().Save(systemId)
+		}
 
-	// start/restart email batching job if necessary
-	a.InitEmailBatching()
-}
-
-func (a *App) ConfigFileName() string {
-	return utils.CfgFileName
+		a.diagnosticId = id
+	}
 }
 
 // Go creates a goroutine, but maintains a record of it to ensure that execution completes before
@@ -351,9 +406,45 @@ func (a *App) HTMLTemplates() *template.Template {
 	return a.htmlTemplateWatcher.Templates()
 }
 
+func (a *App) HTTPClient(trustURLs bool) *http.Client {
+	insecure := a.Config().ServiceSettings.EnableInsecureOutgoingConnections != nil && *a.Config().ServiceSettings.EnableInsecureOutgoingConnections
+
+	if trustURLs {
+		return utils.NewHTTPClient(insecure, nil, nil)
+	}
+
+	allowHost := func(host string) bool {
+		if a.Config().ServiceSettings.AllowedUntrustedInternalConnections == nil {
+			return false
+		}
+		for _, allowed := range strings.Fields(*a.Config().ServiceSettings.AllowedUntrustedInternalConnections) {
+			if host == allowed {
+				return true
+			}
+		}
+		return false
+	}
+
+	allowIP := func(ip net.IP) bool {
+		if !utils.IsReservedIP(ip) {
+			return true
+		}
+		if a.Config().ServiceSettings.AllowedUntrustedInternalConnections == nil {
+			return false
+		}
+		for _, allowed := range strings.Fields(*a.Config().ServiceSettings.AllowedUntrustedInternalConnections) {
+			if _, ipRange, err := net.ParseCIDR(allowed); err == nil && ipRange.Contains(ip) {
+				return true
+			}
+		}
+		return false
+	}
+
+	return utils.NewHTTPClient(insecure, allowHost, allowIP)
+}
+
 func (a *App) Handle404(w http.ResponseWriter, r *http.Request) {
 	err := model.NewAppError("Handle404", "api.context.404.app_error", nil, "", http.StatusNotFound)
-	err.Translate(utils.T)
 
 	l4g.Debug("%v: code=404 ip=%v", r.URL.Path, utils.GetIpAddress(r))
 

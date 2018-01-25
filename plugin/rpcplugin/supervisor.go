@@ -6,6 +6,7 @@ package rpcplugin
 import (
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -20,21 +21,21 @@ import (
 //
 // If the plugin unexpectedly exists, the supervisor will relaunch it after a short delay.
 type Supervisor struct {
-	executable string
 	hooks      atomic.Value
 	done       chan bool
 	cancel     context.CancelFunc
+	newProcess func(context.Context) (Process, io.ReadWriteCloser, error)
 }
 
 var _ plugin.Supervisor = (*Supervisor)(nil)
 
 // Starts the plugin. This method will block until the plugin is successfully launched for the first
 // time and will return an error if the plugin cannot be launched at all.
-func (s *Supervisor) Start() error {
+func (s *Supervisor) Start(api plugin.API) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.done = make(chan bool, 1)
 	start := make(chan error, 1)
-	go s.run(ctx, start)
+	go s.run(ctx, start, api)
 
 	select {
 	case <-time.After(time.Second * 3):
@@ -60,13 +61,13 @@ func (s *Supervisor) Hooks() plugin.Hooks {
 	return s.hooks.Load().(plugin.Hooks)
 }
 
-func (s *Supervisor) run(ctx context.Context, start chan<- error) {
+func (s *Supervisor) run(ctx context.Context, start chan<- error, api plugin.API) {
 	defer func() {
 		s.done <- true
 	}()
 	done := ctx.Done()
 	for {
-		s.runPlugin(ctx, start)
+		s.runPlugin(ctx, start, api)
 		select {
 		case <-done:
 			return
@@ -77,8 +78,8 @@ func (s *Supervisor) run(ctx context.Context, start chan<- error) {
 	}
 }
 
-func (s *Supervisor) runPlugin(ctx context.Context, start chan<- error) error {
-	p, ipc, err := NewProcess(ctx, s.executable)
+func (s *Supervisor) runPlugin(ctx context.Context, start chan<- error, api plugin.API) error {
+	p, ipc, err := s.newProcess(ctx)
 	if err != nil {
 		if start != nil {
 			start <- err
@@ -100,6 +101,10 @@ func (s *Supervisor) runPlugin(ctx context.Context, start chan<- error) error {
 	}()
 
 	hooks, err := ConnectMain(muxer)
+	if err == nil {
+		err = hooks.OnActivate(api)
+	}
+
 	if err != nil {
 		if start != nil {
 			start <- err
@@ -111,6 +116,7 @@ func (s *Supervisor) runPlugin(ctx context.Context, start chan<- error) error {
 	}
 
 	s.hooks.Store(hooks)
+
 	if start != nil {
 		start <- nil
 	}
@@ -122,6 +128,16 @@ func (s *Supervisor) runPlugin(ctx context.Context, start chan<- error) error {
 }
 
 func SupervisorProvider(bundle *model.BundleInfo) (plugin.Supervisor, error) {
+	return SupervisorWithNewProcessFunc(bundle, func(ctx context.Context) (Process, io.ReadWriteCloser, error) {
+		executable := filepath.Clean(filepath.Join(".", bundle.Manifest.Backend.Executable))
+		if strings.HasPrefix(executable, "..") {
+			return nil, nil, fmt.Errorf("invalid backend executable")
+		}
+		return NewProcess(ctx, filepath.Join(bundle.Path, executable))
+	})
+}
+
+func SupervisorWithNewProcessFunc(bundle *model.BundleInfo, newProcess func(context.Context) (Process, io.ReadWriteCloser, error)) (plugin.Supervisor, error) {
 	if bundle.Manifest == nil {
 		return nil, fmt.Errorf("no manifest available")
 	} else if bundle.Manifest.Backend == nil || bundle.Manifest.Backend.Executable == "" {
@@ -131,7 +147,5 @@ func SupervisorProvider(bundle *model.BundleInfo) (plugin.Supervisor, error) {
 	if strings.HasPrefix(executable, "..") {
 		return nil, fmt.Errorf("invalid backend executable")
 	}
-	return &Supervisor{
-		executable: filepath.Join(bundle.Path, executable),
-	}, nil
+	return &Supervisor{newProcess: newProcess}, nil
 }

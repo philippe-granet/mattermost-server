@@ -82,6 +82,10 @@ func (c *Client4) GetUserRoute(userId string) string {
 	return fmt.Sprintf(c.GetUsersRoute()+"/%v", userId)
 }
 
+func (c *Client4) GetUserAccessTokensRoute() string {
+	return fmt.Sprintf(c.GetUsersRoute() + "/tokens")
+}
+
 func (c *Client4) GetUserAccessTokenRoute(tokenId string) string {
 	return fmt.Sprintf(c.GetUsersRoute()+"/tokens/%v", tokenId)
 }
@@ -276,6 +280,10 @@ func (c *Client4) GetEmojisRoute() string {
 
 func (c *Client4) GetEmojiRoute(emojiId string) string {
 	return fmt.Sprintf(c.GetEmojisRoute()+"/%v", emojiId)
+}
+
+func (c *Client4) GetEmojiByNameRoute(name string) string {
+	return fmt.Sprintf(c.GetEmojisRoute()+"/name/%v", name)
 }
 
 func (c *Client4) GetReactionsRoute() string {
@@ -766,6 +774,16 @@ func (c *Client4) PatchUser(userId string, patch *UserPatch) (*User, *Response) 
 	}
 }
 
+// UpdateUserAuth updates a user AuthData (uthData, authService and password) in the system.
+func (c *Client4) UpdateUserAuth(userId string, userAuth *UserAuth) (*UserAuth, *Response) {
+	if r, err := c.DoApiPut(c.GetUserRoute(userId)+"/auth", userAuth.ToJson()); err != nil {
+		return nil, BuildErrorResponse(r, err)
+	} else {
+		defer closeBody(r)
+		return UserAuthFromJson(r.Body), BuildResponse(r)
+	}
+}
+
 // UpdateUserMfa activates multi-factor authentication for a user if activate
 // is true and a valid code is provided. If activate is false, then code is not
 // required and multi-factor authentication is disabled for the user.
@@ -1025,10 +1043,23 @@ func (c *Client4) CreateUserAccessToken(userId, description string) (*UserAccess
 	}
 }
 
-// GetUserAccessToken will get a user access token's id, description and the user_id
-// of the user it is for. The actual token will not be returned. Must have the
-// 'read_user_access_token' permission and if getting for another user, must have the
-// 'edit_other_users' permission.
+// GetUserAccessTokens will get a page of access tokens' id, description, is_active
+// and the user_id in the system. The actual token will not be returned. Must have
+// the 'manage_system' permission.
+func (c *Client4) GetUserAccessTokens(page int, perPage int) ([]*UserAccessToken, *Response) {
+	query := fmt.Sprintf("?page=%v&per_page=%v", page, perPage)
+	if r, err := c.DoApiGet(c.GetUserAccessTokensRoute()+query, ""); err != nil {
+		return nil, BuildErrorResponse(r, err)
+	} else {
+		defer closeBody(r)
+		return UserAccessTokenListFromJson(r.Body), BuildResponse(r)
+	}
+}
+
+// GetUserAccessToken will get a user access tokens' id, description, is_active
+// and the user_id of the user it is for. The actual token will not be returned.
+// Must have the 'read_user_access_token' permission and if getting for another
+// user, must have the 'edit_other_users' permission.
 func (c *Client4) GetUserAccessToken(tokenId string) (*UserAccessToken, *Response) {
 	if r, err := c.DoApiGet(c.GetUserAccessTokenRoute(tokenId), ""); err != nil {
 		return nil, BuildErrorResponse(r, err)
@@ -1062,6 +1093,16 @@ func (c *Client4) RevokeUserAccessToken(tokenId string) (bool, *Response) {
 	} else {
 		defer closeBody(r)
 		return CheckStatusOK(r), BuildResponse(r)
+	}
+}
+
+// SearchUserAccessTokens returns user access tokens matching the provided search term.
+func (c *Client4) SearchUserAccessTokens(search *UserAccessTokenSearch) ([]*UserAccessToken, *Response) {
+	if r, err := c.DoApiPost(c.GetUsersRoute()+"/tokens/search", search.ToJson()); err != nil {
+		return nil, BuildErrorResponse(r, err)
+	} else {
+		defer closeBody(r)
+		return UserAccessTokenListFromJson(r.Body), BuildResponse(r)
 	}
 }
 
@@ -2649,7 +2690,7 @@ func (c *Client4) UploadBrandImage(data []byte) (bool, *Response) {
 
 // GetLogs page of logs as a string array.
 func (c *Client4) GetLogs(page, perPage int) ([]string, *Response) {
-	query := fmt.Sprintf("?page=%v&per_page=%v", page, perPage)
+	query := fmt.Sprintf("?page=%v&logs_per_page=%v", page, perPage)
 	if r, err := c.DoApiGet("/logs"+query, ""); err != nil {
 		return nil, BuildErrorResponse(r, err)
 	} else {
@@ -2986,6 +3027,18 @@ func (c *Client4) GetEmojiList(page, perPage int) ([]*Emoji, *Response) {
 	}
 }
 
+// GetSortedEmojiList returns a page of custom emoji on the system sorted based on the sort
+// parameter, blank for no sorting and "name" to sort by emoji names.
+func (c *Client4) GetSortedEmojiList(page, perPage int, sort string) ([]*Emoji, *Response) {
+	query := fmt.Sprintf("?page=%v&per_page=%v&sort=%v", page, perPage, sort)
+	if r, err := c.DoApiGet(c.GetEmojisRoute()+query, ""); err != nil {
+		return nil, BuildErrorResponse(r, err)
+	} else {
+		defer closeBody(r)
+		return EmojiListFromJson(r.Body), BuildResponse(r)
+	}
+}
+
 // DeleteEmoji delete an custom emoji on the provided emoji id string.
 func (c *Client4) DeleteEmoji(emojiId string) (bool, *Response) {
 	if r, err := c.DoApiDelete(c.GetEmojiRoute(emojiId)); err != nil {
@@ -2996,9 +3049,19 @@ func (c *Client4) DeleteEmoji(emojiId string) (bool, *Response) {
 	}
 }
 
-// GetEmoji returns a custom emoji in the system on the provided emoji id string.
+// GetEmoji returns a custom emoji based on the emojiId string.
 func (c *Client4) GetEmoji(emojiId string) (*Emoji, *Response) {
 	if r, err := c.DoApiGet(c.GetEmojiRoute(emojiId), ""); err != nil {
+		return nil, BuildErrorResponse(r, err)
+	} else {
+		defer closeBody(r)
+		return EmojiFromJson(r.Body), BuildResponse(r)
+	}
+}
+
+// GetEmojiByName returns a custom emoji based on the name string.
+func (c *Client4) GetEmojiByName(name string) (*Emoji, *Response) {
+	if r, err := c.DoApiGet(c.GetEmojiByNameRoute(name), ""); err != nil {
 		return nil, BuildErrorResponse(r, err)
 	} else {
 		defer closeBody(r)
@@ -3018,6 +3081,27 @@ func (c *Client4) GetEmojiImage(emojiId string) ([]byte, *Response) {
 		} else {
 			return data, BuildResponse(r)
 		}
+	}
+}
+
+// SearchEmoji returns a list of emoji matching some search criteria.
+func (c *Client4) SearchEmoji(search *EmojiSearch) ([]*Emoji, *Response) {
+	if r, err := c.DoApiPost(c.GetEmojisRoute()+"/search", search.ToJson()); err != nil {
+		return nil, BuildErrorResponse(r, err)
+	} else {
+		defer closeBody(r)
+		return EmojiListFromJson(r.Body), BuildResponse(r)
+	}
+}
+
+// AutocompleteEmoji returns a list of emoji starting with or matching name.
+func (c *Client4) AutocompleteEmoji(name string, etag string) ([]*Emoji, *Response) {
+	query := fmt.Sprintf("?name=%v", name)
+	if r, err := c.DoApiGet(c.GetEmojisRoute()+"/autocomplete"+query, ""); err != nil {
+		return nil, BuildErrorResponse(r, err)
+	} else {
+		defer closeBody(r)
+		return EmojiListFromJson(r.Body), BuildResponse(r)
 	}
 }
 

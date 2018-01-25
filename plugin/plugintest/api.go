@@ -12,12 +12,38 @@ import (
 
 type API struct {
 	mock.Mock
+	Store *KeyValueStore
+}
+
+type KeyValueStore struct {
+	mock.Mock
 }
 
 var _ plugin.API = (*API)(nil)
+var _ plugin.KeyValueStore = (*KeyValueStore)(nil)
 
 func (m *API) LoadPluginConfiguration(dest interface{}) error {
-	return m.Called(dest).Error(0)
+	ret := m.Called(dest)
+	if f, ok := ret.Get(0).(func(interface{}) error); ok {
+		return f(dest)
+	}
+	return ret.Error(0)
+}
+
+func (m *API) RegisterCommand(command *model.Command) error {
+	ret := m.Called(command)
+	if f, ok := ret.Get(0).(func(*model.Command) error); ok {
+		return f(command)
+	}
+	return ret.Error(0)
+}
+
+func (m *API) UnregisterCommand(teamId, trigger string) error {
+	ret := m.Called(teamId, trigger)
+	if f, ok := ret.Get(0).(func(string, string) error); ok {
+		return f(teamId, trigger)
+	}
+	return ret.Error(0)
 }
 
 func (m *API) CreateUser(user *model.User) (*model.User, *model.AppError) {
@@ -197,6 +223,16 @@ func (m *API) UpdateChannel(channel *model.Channel) (*model.Channel, *model.AppE
 	return channelOut, err
 }
 
+func (m *API) GetChannelMember(channelId, userId string) (*model.ChannelMember, *model.AppError) {
+	ret := m.Called(channelId, userId)
+	if f, ok := ret.Get(0).(func(_, _ string) (*model.ChannelMember, *model.AppError)); ok {
+		return f(channelId, userId)
+	}
+	member, _ := ret.Get(0).(*model.ChannelMember)
+	err, _ := ret.Get(1).(*model.AppError)
+	return member, err
+}
+
 func (m *API) CreatePost(post *model.Post) (*model.Post, *model.AppError) {
 	ret := m.Called(post)
 	if f, ok := ret.Get(0).(func(*model.Post) (*model.Post, *model.AppError)); ok {
@@ -234,4 +270,36 @@ func (m *API) UpdatePost(post *model.Post) (*model.Post, *model.AppError) {
 	postOut, _ := ret.Get(0).(*model.Post)
 	err, _ := ret.Get(1).(*model.AppError)
 	return postOut, err
+}
+
+func (m *API) KeyValueStore() plugin.KeyValueStore {
+	return m.Store
+}
+
+func (m *KeyValueStore) Set(key string, value []byte) *model.AppError {
+	ret := m.Called(key, value)
+	if f, ok := ret.Get(0).(func(string, []byte) *model.AppError); ok {
+		return f(key, value)
+	}
+	err, _ := ret.Get(0).(*model.AppError)
+	return err
+}
+
+func (m *KeyValueStore) Get(key string) ([]byte, *model.AppError) {
+	ret := m.Called(key)
+	if f, ok := ret.Get(0).(func(string) ([]byte, *model.AppError)); ok {
+		return f(key)
+	}
+	psv, _ := ret.Get(0).([]byte)
+	err, _ := ret.Get(1).(*model.AppError)
+	return psv, err
+}
+
+func (m *KeyValueStore) Delete(key string) *model.AppError {
+	ret := m.Called(key)
+	if f, ok := ret.Get(0).(func(string) *model.AppError); ok {
+		return f(key)
+	}
+	err, _ := ret.Get(0).(*model.AppError)
+	return err
 }

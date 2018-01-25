@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/store"
 )
@@ -155,11 +157,12 @@ func testUserStoreUpdate(t *testing.T, ss store.Store) {
 		}
 	}
 
+	u3.Email = model.NewId()
 	if result := <-ss.User().Update(u3, true); result.Err != nil {
 		t.Fatal("Update should not have failed")
 	} else {
 		newUser := result.Data.([2]*model.User)[0]
-		if newUser.Email != u3.Email {
+		if newUser.Email == oldEmail {
 			t.Fatal("Email should have been updated as the update is trusted")
 		}
 	}
@@ -1817,6 +1820,10 @@ func testUserStoreSearch(t *testing.T, ss store.Store) {
 			t.Fatal("should have found user")
 		}
 	}
+
+	// Check PLT-8354 - search that ends up with just space for terms doesn't error.
+	r1 := <-ss.User().SearchWithoutTeam("* ", searchOptions)
+	assert.Nil(t, r1.Err)
 }
 
 func testUserStoreSearchWithoutTeam(t *testing.T, ss store.Store) {

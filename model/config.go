@@ -24,6 +24,10 @@ const (
 	DATABASE_DRIVER_MYSQL    = "mysql"
 	DATABASE_DRIVER_POSTGRES = "postgres"
 
+	MINIO_ACCESS_KEY = "minioaccesskey"
+	MINIO_SECRET_KEY = "miniosecretkey"
+	MINIO_BUCKET     = "mattermost-test"
+
 	PASSWORD_MAXIMUM_LENGTH = 64
 	PASSWORD_MINIMUM_LENGTH = 5
 
@@ -148,64 +152,72 @@ const (
 	DATA_RETENTION_SETTINGS_DEFAULT_FILE_RETENTION_DAYS     = 365
 	DATA_RETENTION_SETTINGS_DEFAULT_DELETION_JOB_START_TIME = "02:00"
 
-	PLUGIN_SETTINGS_DEFAULT_DIRECTORY = "./plugins"
+	PLUGIN_SETTINGS_DEFAULT_DIRECTORY        = "./plugins"
+	PLUGIN_SETTINGS_DEFAULT_CLIENT_DIRECTORY = "./client/plugins"
 )
 
 type ServiceSettings struct {
-	SiteURL                                  *string
-	LicenseFileLocation                      *string
-	ListenAddress                            *string
-	ConnectionSecurity                       *string
-	TLSCertFile                              *string
-	TLSKeyFile                               *string
-	UseLetsEncrypt                           *bool
-	LetsEncryptCertificateCacheFile          *string
-	Forward80To443                           *bool
-	ReadTimeout                              *int
-	WriteTimeout                             *int
-	MaximumLoginAttempts                     *int
-	GoroutineHealthThreshold                 *int
-	GoogleDeveloperKey                       string
-	EnableOAuthServiceProvider               bool
-	EnableIncomingWebhooks                   bool
-	EnableOutgoingWebhooks                   bool
-	EnableCommands                           *bool
-	EnableOnlyAdminIntegrations              *bool
-	EnablePostUsernameOverride               bool
-	EnablePostIconOverride                   bool
-	EnableAPIv3                              *bool
-	EnableLinkPreviews                       *bool
-	EnableTesting                            bool
-	EnableDeveloper                          *bool
-	EnableSecurityFixAlert                   *bool
-	EnableInsecureOutgoingConnections        *bool
-	AllowedUntrustedInternalConnections      *string
-	EnableMultifactorAuthentication          *bool
-	EnforceMultifactorAuthentication         *bool
-	EnableUserAccessTokens                   *bool
-	AllowCorsFrom                            *string
-	SessionLengthWebInDays                   *int
-	SessionLengthMobileInDays                *int
-	SessionLengthSSOInDays                   *int
-	SessionCacheInMinutes                    *int
-	SessionIdleTimeoutInMinutes              *int
-	WebsocketSecurePort                      *int
-	WebsocketPort                            *int
-	WebserverMode                            *string
-	EnableCustomEmoji                        *bool
-	EnableEmojiPicker                        *bool
-	RestrictCustomEmojiCreation              *string
-	RestrictPostDelete                       *string
-	AllowEditPost                            *string
-	PostEditTimeLimit                        *int
-	TimeBetweenUserTypingUpdatesMilliseconds *int64
-	EnablePostSearch                         *bool
-	EnableUserTypingMessages                 *bool
-	EnableChannelViewedMessages              *bool
-	EnableUserStatuses                       *bool
-	ClusterLogTimeoutMilliseconds            *int
-	CloseUnusedDirectMessages                *bool
-	EnablePreviewFeatures                    *bool
+	SiteURL                                           *string
+	LicenseFileLocation                               *string
+	ListenAddress                                     *string
+	ConnectionSecurity                                *string
+	TLSCertFile                                       *string
+	TLSKeyFile                                        *string
+	UseLetsEncrypt                                    *bool
+	LetsEncryptCertificateCacheFile                   *string
+	Forward80To443                                    *bool
+	ReadTimeout                                       *int
+	WriteTimeout                                      *int
+	MaximumLoginAttempts                              *int
+	GoroutineHealthThreshold                          *int
+	GoogleDeveloperKey                                string
+	EnableOAuthServiceProvider                        bool
+	EnableIncomingWebhooks                            bool
+	EnableOutgoingWebhooks                            bool
+	EnableCommands                                    *bool
+	EnableOnlyAdminIntegrations                       *bool
+	EnablePostUsernameOverride                        bool
+	EnablePostIconOverride                            bool
+	EnableAPIv3                                       *bool
+	EnableLinkPreviews                                *bool
+	EnableTesting                                     bool
+	EnableDeveloper                                   *bool
+	EnableSecurityFixAlert                            *bool
+	EnableInsecureOutgoingConnections                 *bool
+	AllowedUntrustedInternalConnections               *string
+	EnableMultifactorAuthentication                   *bool
+	EnforceMultifactorAuthentication                  *bool
+	EnableUserAccessTokens                            *bool
+	AllowCorsFrom                                     *string
+	SessionLengthWebInDays                            *int
+	SessionLengthMobileInDays                         *int
+	SessionLengthSSOInDays                            *int
+	SessionCacheInMinutes                             *int
+	SessionIdleTimeoutInMinutes                       *int
+	WebsocketSecurePort                               *int
+	WebsocketPort                                     *int
+	WebserverMode                                     *string
+	EnableCustomEmoji                                 *bool
+	EnableEmojiPicker                                 *bool
+	RestrictCustomEmojiCreation                       *string
+	RestrictPostDelete                                *string
+	AllowEditPost                                     *string
+	PostEditTimeLimit                                 *int
+	TimeBetweenUserTypingUpdatesMilliseconds          *int64
+	EnablePostSearch                                  *bool
+	EnableUserTypingMessages                          *bool
+	EnableChannelViewedMessages                       *bool
+	EnableUserStatuses                                *bool
+	ExperimentalEnableAuthenticationTransfer          *bool
+	ClusterLogTimeoutMilliseconds                     *int
+	CloseUnusedDirectMessages                         *bool
+	EnablePreviewFeatures                             *bool
+	EnableTutorial                                    *bool
+	ExperimentalEnableDefaultChannelLeaveJoinMessages *bool
+	ExperimentalGroupUnreadChannels                   *bool
+	ImageProxyType                                    *string
+	ImageProxyURL                                     *string
+	ImageProxyOptions                                 *string
 }
 
 func (s *ServiceSettings) SetDefaults() {
@@ -242,7 +254,7 @@ func (s *ServiceSettings) SetDefaults() {
 	}
 
 	if s.AllowedUntrustedInternalConnections == nil {
-		s.AllowedUntrustedInternalConnections = new(string)
+		s.AllowedUntrustedInternalConnections = NewString("")
 	}
 
 	if s.EnableMultifactorAuthentication == nil {
@@ -325,6 +337,10 @@ func (s *ServiceSettings) SetDefaults() {
 		s.CloseUnusedDirectMessages = NewBool(false)
 	}
 
+	if s.EnableTutorial == nil {
+		s.EnableTutorial = NewBool(true)
+	}
+
 	if s.SessionLengthWebInDays == nil {
 		s.SessionLengthWebInDays = NewInt(30)
 	}
@@ -391,8 +407,36 @@ func (s *ServiceSettings) SetDefaults() {
 		s.AllowEditPost = NewString(ALLOW_EDIT_POST_ALWAYS)
 	}
 
+	if s.ExperimentalEnableAuthenticationTransfer == nil {
+		s.ExperimentalEnableAuthenticationTransfer = NewBool(true)
+	}
+
 	if s.PostEditTimeLimit == nil {
 		s.PostEditTimeLimit = NewInt(300)
+	}
+
+	if s.EnablePreviewFeatures == nil {
+		s.EnablePreviewFeatures = NewBool(true)
+	}
+
+	if s.ExperimentalEnableDefaultChannelLeaveJoinMessages == nil {
+		s.ExperimentalEnableDefaultChannelLeaveJoinMessages = NewBool(true)
+	}
+
+	if s.ExperimentalGroupUnreadChannels == nil {
+		s.ExperimentalGroupUnreadChannels = NewBool(false)
+	}
+
+	if s.ImageProxyType == nil {
+		s.ImageProxyType = NewString("")
+	}
+
+	if s.ImageProxyURL == nil {
+		s.ImageProxyURL = NewString("")
+	}
+
+	if s.ImageProxyOptions == nil {
+		s.ImageProxyOptions = NewString("")
 	}
 }
 
@@ -649,6 +693,7 @@ type EmailSettings struct {
 	EnableSignInWithEmail             *bool
 	EnableSignInWithUsername          *bool
 	SendEmailNotifications            bool
+	UseChannelInEmailNotifications    *bool
 	RequireEmailVerification          bool
 	FeedbackName                      string
 	FeedbackEmail                     string
@@ -668,6 +713,9 @@ type EmailSettings struct {
 	EmailBatchingInterval             *int
 	SkipServerCertificateVerification *bool
 	EmailNotificationContentsType     *string
+	LoginButtonColor                  *string
+	LoginButtonBorderColor            *string
+	LoginButtonTextColor              *string
 }
 
 func (s *EmailSettings) SetDefaults() {
@@ -681,6 +729,10 @@ func (s *EmailSettings) SetDefaults() {
 
 	if s.EnableSignInWithUsername == nil {
 		s.EnableSignInWithUsername = NewBool(false)
+	}
+
+	if s.UseChannelInEmailNotifications == nil {
+		s.UseChannelInEmailNotifications = NewBool(false)
 	}
 
 	if s.SendPushNotifications == nil {
@@ -730,6 +782,18 @@ func (s *EmailSettings) SetDefaults() {
 
 	if s.EmailNotificationContentsType == nil {
 		s.EmailNotificationContentsType = NewString(EMAIL_NOTIFICATION_CONTENTS_FULL)
+	}
+
+	if s.LoginButtonColor == nil {
+		s.LoginButtonColor = NewString("#0000")
+	}
+
+	if s.LoginButtonBorderColor == nil {
+		s.LoginButtonBorderColor = NewString("#2389D7")
+	}
+
+	if s.LoginButtonTextColor == nil {
+		s.LoginButtonTextColor = NewString("#2389D7")
 	}
 }
 
@@ -901,6 +965,7 @@ type TeamSettings struct {
 	EnableConfirmNotificationsToChannel *bool
 	TeammateNameDisplay                 *string
 	ExperimentalTownSquareIsReadOnly    *bool
+	ExperimentalPrimaryTeam             *string
 }
 
 func (s *TeamSettings) SetDefaults() {
@@ -996,6 +1061,10 @@ func (s *TeamSettings) SetDefaults() {
 	if s.ExperimentalTownSquareIsReadOnly == nil {
 		s.ExperimentalTownSquareIsReadOnly = NewBool(false)
 	}
+
+	if s.ExperimentalPrimaryTeam == nil {
+		s.ExperimentalPrimaryTeam = NewString("")
+	}
 }
 
 type ClientRequirements struct {
@@ -1040,6 +1109,10 @@ type LdapSettings struct {
 
 	// Customization
 	LoginFieldName *string
+
+	LoginButtonColor       *string
+	LoginButtonBorderColor *string
+	LoginButtonTextColor   *string
 }
 
 func (s *LdapSettings) SetDefaults() {
@@ -1127,6 +1200,18 @@ func (s *LdapSettings) SetDefaults() {
 	if s.LoginFieldName == nil {
 		s.LoginFieldName = NewString(LDAP_SETTINGS_DEFAULT_LOGIN_FIELD_NAME)
 	}
+
+	if s.LoginButtonColor == nil {
+		s.LoginButtonColor = NewString("#0000")
+	}
+
+	if s.LoginButtonBorderColor == nil {
+		s.LoginButtonBorderColor = NewString("#2389D7")
+	}
+
+	if s.LoginButtonTextColor == nil {
+		s.LoginButtonTextColor = NewString("#2389D7")
+	}
 }
 
 type ComplianceSettings struct {
@@ -1195,6 +1280,10 @@ type SamlSettings struct {
 	PositionAttribute  *string
 
 	LoginButtonText *string
+
+	LoginButtonColor       *string
+	LoginButtonBorderColor *string
+	LoginButtonTextColor   *string
 }
 
 func (s *SamlSettings) SetDefaults() {
@@ -1268,6 +1357,18 @@ func (s *SamlSettings) SetDefaults() {
 
 	if s.LocaleAttribute == nil {
 		s.LocaleAttribute = NewString(SAML_SETTINGS_DEFAULT_LOCALE_ATTRIBUTE)
+	}
+
+	if s.LoginButtonColor == nil {
+		s.LoginButtonColor = NewString("#34a28b")
+	}
+
+	if s.LoginButtonBorderColor == nil {
+		s.LoginButtonBorderColor = NewString("#2389D7")
+	}
+
+	if s.LoginButtonTextColor == nil {
+		s.LoginButtonTextColor = NewString("#ffffff")
 	}
 }
 
@@ -1461,11 +1562,12 @@ type PluginState struct {
 }
 
 type PluginSettings struct {
-	Enable        *bool
-	EnableUploads *bool
-	Directory     *string
-	Plugins       map[string]interface{}
-	PluginStates  map[string]*PluginState
+	Enable          *bool
+	EnableUploads   *bool
+	Directory       *string
+	ClientDirectory *string
+	Plugins         map[string]interface{}
+	PluginStates    map[string]*PluginState
 }
 
 func (s *PluginSettings) SetDefaults() {
@@ -1485,12 +1587,53 @@ func (s *PluginSettings) SetDefaults() {
 		*s.Directory = PLUGIN_SETTINGS_DEFAULT_DIRECTORY
 	}
 
+	if s.ClientDirectory == nil {
+		s.ClientDirectory = NewString(PLUGIN_SETTINGS_DEFAULT_CLIENT_DIRECTORY)
+	}
+
+	if *s.ClientDirectory == "" {
+		*s.ClientDirectory = PLUGIN_SETTINGS_DEFAULT_CLIENT_DIRECTORY
+	}
+
 	if s.Plugins == nil {
 		s.Plugins = make(map[string]interface{})
 	}
 
 	if s.PluginStates == nil {
 		s.PluginStates = make(map[string]*PluginState)
+	}
+}
+
+type MessageExportSettings struct {
+	EnableExport        *bool
+	DailyRunTime        *string
+	ExportFromTimestamp *int64
+	BatchSize           *int
+}
+
+func (s *MessageExportSettings) SetDefaults() {
+	if s.EnableExport == nil {
+		s.EnableExport = NewBool(false)
+	}
+
+	if s.DailyRunTime == nil {
+		s.DailyRunTime = NewString("01:00")
+	}
+
+	if s.ExportFromTimestamp == nil {
+		s.ExportFromTimestamp = NewInt64(0)
+	}
+
+	if s.EnableExport != nil && *s.EnableExport && *s.ExportFromTimestamp == int64(0) {
+		// when the feature is enabled via the System Console, use the current timestamp as the start time for future exports
+		s.ExportFromTimestamp = NewInt64(GetMillis())
+	} else if s.EnableExport != nil && !*s.EnableExport {
+		// when the feature is disabled, reset the timestamp so that the timestamp will be set if the feature is re-enabled
+		s.ExportFromTimestamp = NewInt64(0)
+	}
+
+	if s.BatchSize == nil {
+		s.BatchSize = NewInt(10000)
 	}
 }
 
@@ -1524,6 +1667,7 @@ type Config struct {
 	WebrtcSettings        WebrtcSettings
 	ElasticsearchSettings ElasticsearchSettings
 	DataRetentionSettings DataRetentionSettings
+	MessageExportSettings MessageExportSettings
 	JobSettings           JobSettings
 	PluginSettings        PluginSettings
 }
@@ -1603,6 +1747,7 @@ func (o *Config) SetDefaults() {
 	o.LogSettings.SetDefaults()
 	o.JobSettings.SetDefaults()
 	o.WebrtcSettings.SetDefaults()
+	o.MessageExportSettings.SetDefaults()
 }
 
 func (o *Config) IsValid() *AppError {
@@ -1663,6 +1808,10 @@ func (o *Config) IsValid() *AppError {
 	}
 
 	if err := o.LocalizationSettings.isValid(); err != nil {
+		return err
+	}
+
+	if err := o.MessageExportSettings.isValid(o.FileSettings); err != nil {
 		return err
 	}
 
@@ -1921,6 +2070,16 @@ func (ss *ServiceSettings) isValid() *AppError {
 		return NewAppError("Config.IsValid", "model.config.is_valid.listen_address.app_error", nil, "", http.StatusBadRequest)
 	}
 
+	switch *ss.ImageProxyType {
+	case "", "willnorris/imageproxy":
+	case "atmos/camo":
+		if *ss.ImageProxyOptions == "" {
+			return NewAppError("Config.IsValid", "model.config.is_valid.atmos_camo_image_proxy_options.app_error", nil, "", http.StatusBadRequest)
+		}
+	default:
+		return NewAppError("Config.IsValid", "model.config.is_valid.image_proxy_type.app_error", nil, "", http.StatusBadRequest)
+	}
+
 	return nil
 }
 
@@ -1981,6 +2140,24 @@ func (ls *LocalizationSettings) isValid() *AppError {
 		}
 	}
 
+	return nil
+}
+
+func (mes *MessageExportSettings) isValid(fs FileSettings) *AppError {
+	if mes.EnableExport == nil {
+		return NewAppError("Config.IsValid", "model.config.is_valid.message_export.enable.app_error", nil, "", http.StatusBadRequest)
+	}
+	if *mes.EnableExport {
+		if mes.ExportFromTimestamp == nil || *mes.ExportFromTimestamp < 0 || *mes.ExportFromTimestamp > GetMillis() {
+			return NewAppError("Config.IsValid", "model.config.is_valid.message_export.export_from.app_error", nil, "", http.StatusBadRequest)
+		} else if mes.DailyRunTime == nil {
+			return NewAppError("Config.IsValid", "model.config.is_valid.message_export.daily_runtime.app_error", nil, "", http.StatusBadRequest)
+		} else if _, err := time.Parse("15:04", *mes.DailyRunTime); err != nil {
+			return NewAppError("Config.IsValid", "model.config.is_valid.message_export.daily_runtime.app_error", nil, err.Error(), http.StatusBadRequest)
+		} else if mes.BatchSize == nil || *mes.BatchSize < 0 {
+			return NewAppError("Config.IsValid", "model.config.is_valid.message_export.batch_size.app_error", nil, "", http.StatusBadRequest)
+		}
+	}
 	return nil
 }
 

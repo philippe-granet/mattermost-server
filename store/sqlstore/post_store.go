@@ -98,8 +98,10 @@ func (s SqlPostStore) Save(post *model.Post) store.StoreChannel {
 		} else {
 			time := post.UpdateAt
 
-			if post.Type != model.POST_JOIN_LEAVE && post.Type != model.POST_JOIN_CHANNEL && post.Type != model.POST_LEAVE_CHANNEL &&
-				post.Type != model.POST_ADD_REMOVE && post.Type != model.POST_ADD_TO_CHANNEL && post.Type != model.POST_REMOVE_FROM_CHANNEL {
+			if post.Type != model.POST_JOIN_LEAVE && post.Type != model.POST_ADD_REMOVE &&
+				post.Type != model.POST_JOIN_CHANNEL && post.Type != model.POST_LEAVE_CHANNEL &&
+				post.Type != model.POST_JOIN_TEAM && post.Type != model.POST_LEAVE_TEAM &&
+				post.Type != model.POST_ADD_TO_CHANNEL && post.Type != model.POST_REMOVE_FROM_CHANNEL {
 				s.GetMaster().Exec("UPDATE Channels SET LastPostAt = :LastPostAt, TotalMsgCount = TotalMsgCount + 1 WHERE Id = :ChannelId", map[string]interface{}{"LastPostAt": time, "ChannelId": post.ChannelId})
 			} else {
 				// don't update TotalMsgCount for unimportant messages so that the channel isn't marked as unread
@@ -696,7 +698,7 @@ func (s SqlPostStore) getParentsPosts(channelId string, offset int, limit int) s
 			ORDER BY CreateAt`,
 			map[string]interface{}{"ChannelId1": channelId, "Offset": offset, "Limit": limit, "ChannelId2": channelId})
 		if err != nil {
-			result.Err = model.NewAppError("SqlPostStore.GetLinearPosts", "store.sql_post.get_parents_posts.app_error", nil, "channelId="+channelId+err.Error(), http.StatusInternalServerError)
+			result.Err = model.NewAppError("SqlPostStore.GetLinearPosts", "store.sql_post.get_parents_posts.app_error", nil, "channelId="+channelId+" err="+err.Error(), http.StatusInternalServerError)
 		} else {
 			result.Data = posts
 		}
@@ -1030,10 +1032,10 @@ func (s SqlPostStore) AnalyticsPostCount(teamId string, mustHaveFile bool, mustH
 
 func (s SqlPostStore) GetPostsCreatedAt(channelId string, time int64) store.StoreChannel {
 	return store.Do(func(result *store.StoreResult) {
-		query := `SELECT * FROM Posts WHERE CreateAt = :CreateAt`
+		query := `SELECT * FROM Posts WHERE CreateAt = :CreateAt AND ChannelId = :ChannelId`
 
 		var posts []*model.Post
-		_, err := s.GetReplica().Select(&posts, query, map[string]interface{}{"CreateAt": time})
+		_, err := s.GetReplica().Select(&posts, query, map[string]interface{}{"CreateAt": time, "ChannelId": channelId})
 
 		if err != nil {
 			result.Err = model.NewAppError("SqlPostStore.GetPostsCreatedAt", "store.sql_post.get_posts_created_att.app_error", nil, "channelId="+channelId+err.Error(), http.StatusInternalServerError)

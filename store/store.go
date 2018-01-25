@@ -63,6 +63,8 @@ type Store interface {
 	Reaction() ReactionStore
 	Job() JobStore
 	UserAccessToken() UserAccessTokenStore
+	ChannelMemberHistory() ChannelMemberHistoryStore
+	Plugin() PluginStore
 	MarkSystemRanUnitTests()
 	Close()
 	DropAllTables()
@@ -118,6 +120,7 @@ type ChannelStore interface {
 	PermanentDeleteByTeam(teamId string) StoreChannel
 	PermanentDelete(channelId string) StoreChannel
 	GetByName(team_id string, name string, allowFromCache bool) StoreChannel
+	GetByNames(team_id string, names []string, allowFromCache bool) StoreChannel
 	GetByNameIncludeDeleted(team_id string, name string, allowFromCache bool) StoreChannel
 	GetDeletedByName(team_id string, name string) StoreChannel
 	GetDeleted(team_id string, offset int, limit int) StoreChannel
@@ -156,6 +159,13 @@ type ChannelStore interface {
 	GetMembersByIds(channelId string, userIds []string) StoreChannel
 	AnalyticsDeletedTypeCount(teamId string, channelType string) StoreChannel
 	GetChannelUnread(channelId, userId string) StoreChannel
+}
+
+type ChannelMemberHistoryStore interface {
+	LogJoinEvent(userId string, channelId string, joinTime int64) StoreChannel
+	LogLeaveEvent(userId string, channelId string, leaveTime int64) StoreChannel
+	GetUsersInChannelDuring(startTime int64, endTime int64, channelId string) StoreChannel
+	PermanentDeleteBatch(endTime int64, limit int64) StoreChannel
 }
 
 type PostStore interface {
@@ -250,6 +260,7 @@ type SessionStore interface {
 	UpdateRoles(userId string, roles string) StoreChannel
 	UpdateDeviceId(id string, deviceId string, expiresAt int64) StoreChannel
 	AnalyticsSessionCount() StoreChannel
+	Cleanup(expiryTime int64, batchSize int64)
 }
 
 type AuditStore interface {
@@ -274,6 +285,7 @@ type ComplianceStore interface {
 	Get(id string) StoreChannel
 	GetAll(offset, limit int) StoreChannel
 	ComplianceExport(compliance *model.Compliance) StoreChannel
+	MessageExport(after int64, limit int) StoreChannel
 }
 
 type OAuthStore interface {
@@ -379,8 +391,9 @@ type EmojiStore interface {
 	Save(emoji *model.Emoji) StoreChannel
 	Get(id string, allowFromCache bool) StoreChannel
 	GetByName(name string) StoreChannel
-	GetList(offset, limit int) StoreChannel
+	GetList(offset, limit int, sort string) StoreChannel
 	Delete(id string, time int64) StoreChannel
+	Search(name string, prefixOnly bool, limit int) StoreChannel
 }
 
 type StatusStore interface {
@@ -435,8 +448,16 @@ type UserAccessTokenStore interface {
 	Delete(tokenId string) StoreChannel
 	DeleteAllForUser(userId string) StoreChannel
 	Get(tokenId string) StoreChannel
+	GetAll(offset int, limit int) StoreChannel
 	GetByToken(tokenString string) StoreChannel
 	GetByUser(userId string, page, perPage int) StoreChannel
+	Search(term string) StoreChannel
 	UpdateTokenEnable(tokenId string) StoreChannel
 	UpdateTokenDisable(tokenId string) StoreChannel
+}
+
+type PluginStore interface {
+	SaveOrUpdate(keyVal *model.PluginKeyValue) StoreChannel
+	Get(pluginId, key string) StoreChannel
+	Delete(pluginId, key string) StoreChannel
 }

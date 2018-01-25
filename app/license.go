@@ -23,7 +23,7 @@ func (a *App) LoadLicense() {
 
 	if len(licenseId) != 26 {
 		// Lets attempt to load the file from disk since it was missing from the DB
-		license, licenseBytes := utils.GetAndValidateLicenseFileFromDisk()
+		license, licenseBytes := utils.GetAndValidateLicenseFileFromDisk(*a.Config().ServiceSettings.LicenseFileLocation)
 
 		if license != nil {
 			if _, err := a.SaveLicense(licenseBytes); err != nil {
@@ -88,6 +88,16 @@ func (a *App) SaveLicense(licenseBytes []byte) (*model.License, *model.AppError)
 
 	a.ReloadConfig()
 	a.InvalidateAllCaches()
+
+	// start job server if necessary - this handles the edge case where a license file is uploaded, but the job server
+	// doesn't start until the server is restarted, which prevents the 'run job now' buttons in system console from
+	// functioning as expected
+	if *a.Config().JobSettings.RunJobs {
+		a.Jobs.StartWorkers()
+	}
+	if *a.Config().JobSettings.RunScheduler {
+		a.Jobs.StartSchedulers()
+	}
 
 	return license, nil
 }

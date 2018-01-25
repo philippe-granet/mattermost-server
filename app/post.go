@@ -4,6 +4,11 @@
 package app
 
 import (
+	"crypto/hmac"
+	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -152,6 +157,10 @@ func (a *App) CreatePost(post *model.Post, channel *model.Channel, triggerWebhoo
 
 	post.Hashtags, _ = model.ParseHashtags(post.Message)
 
+	if err := a.FillInPostProps(post, channel); err != nil {
+		return nil, err
+	}
+
 	var rpost *model.Post
 	if result := <-a.Srv.Store.Post().Save(post); result.Err != nil {
 		return nil, result.Err
@@ -190,6 +199,46 @@ func (a *App) CreatePost(post *model.Post, channel *model.Channel, triggerWebhoo
 	}
 
 	return rpost, nil
+}
+
+// FillInPostProps should be invoked before saving posts to fill in properties such as
+// channel_mentions.
+//
+// If channel is nil, FillInPostProps will look up the channel corresponding to the post.
+func (a *App) FillInPostProps(post *model.Post, channel *model.Channel) *model.AppError {
+	channelMentions := post.ChannelMentions()
+	channelMentionsProp := make(map[string]interface{})
+
+	if len(channelMentions) > 0 {
+		if channel == nil {
+			result := <-a.Srv.Store.Channel().GetForPost(post.Id)
+			if result.Err != nil {
+				return model.NewAppError("FillInPostProps", "api.context.invalid_param.app_error", map[string]interface{}{"Name": "post.channel_id"}, result.Err.Error(), http.StatusBadRequest)
+			}
+			channel = result.Data.(*model.Channel)
+		}
+
+		mentionedChannels, err := a.GetChannelsByNames(channelMentions, channel.TeamId)
+		if err != nil {
+			return err
+		}
+
+		for _, mentioned := range mentionedChannels {
+			if mentioned.Type == model.CHANNEL_OPEN {
+				channelMentionsProp[mentioned.Name] = map[string]interface{}{
+					"display_name": mentioned.DisplayName,
+				}
+			}
+		}
+	}
+
+	if len(channelMentionsProp) > 0 {
+		post.AddProp("channel_mentions", channelMentionsProp)
+	} else if post.Props != nil {
+		delete(post.Props, "channel_mentions")
+	}
+
+	return nil
 }
 
 func (a *App) handlePostEvents(post *model.Post, user *model.User, channel *model.Channel, triggerWebhooks bool, parentPostList *model.PostList) *model.AppError {
@@ -265,7 +314,7 @@ func (a *App) SendEphemeralPost(userId string, post *model.Post) *model.Post {
 	}
 
 	message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_EPHEMERAL_MESSAGE, "", post.ChannelId, userId, nil)
-	message.Add("post", post.ToJson())
+	message.Add("post", a.PostWithProxyAddedToImageURLs(post).ToJson())
 
 	a.Go(func() {
 		a.Publish(message)
@@ -329,6 +378,10 @@ func (a *App) UpdatePost(post *model.Post, safeUpdate bool) (*model.Post, *model
 		newPost.Props = post.Props
 	}
 
+	if err := a.FillInPostProps(post, nil); err != nil {
+		return nil, err
+	}
+
 	if result := <-a.Srv.Store.Post().Update(newPost, oldPost); result.Err != nil {
 		return nil, result.Err
 	} else {
@@ -371,7 +424,7 @@ func (a *App) PatchPost(postId string, patch *model.PostPatch) (*model.Post, *mo
 
 func (a *App) sendUpdatedPostEvent(post *model.Post) {
 	message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_POST_EDITED, "", post.ChannelId, "", nil)
-	message.Add("post", post.ToJson())
+	message.Add("post", a.PostWithProxyAddedToImageURLs(post).ToJson())
 
 	a.Go(func() {
 		a.Publish(message)
@@ -514,7 +567,7 @@ func (a *App) DeletePost(postId string) (*model.Post, *model.AppError) {
 		}
 
 		message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_POST_DELETED, "", post.ChannelId, "", nil)
-		message.Add("post", post.ToJson())
+		message.Add("post", a.PostWithProxyAddedToImageURLs(post).ToJson())
 
 		a.Go(func() {
 			a.Publish(message)
@@ -681,10 +734,10 @@ func (a *App) GetFileInfosForPost(postId string, readFromMaster bool) ([]*model.
 	return infos, nil
 }
 
-func GetOpenGraphMetadata(url string) *opengraph.OpenGraph {
+func (a *App) GetOpenGraphMetadata(url string) *opengraph.OpenGraph {
 	og := opengraph.NewOpenGraph()
 
-	res, err := utils.HttpClient(false).Get(url)
+	res, err := a.HTTPClient(false).Get(url)
 	if err != nil {
 		l4g.Error("GetOpenGraphMetadata request failed for url=%v with err=%v", url, err.Error())
 		return og
@@ -721,7 +774,7 @@ func (a *App) DoPostAction(postId string, actionId string, userId string) *model
 	req, _ := http.NewRequest("POST", action.Integration.URL, strings.NewReader(request.ToJson()))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	resp, err := utils.HttpClient(false).Do(req)
+	resp, err := a.HTTPClient(false).Do(req)
 	if err != nil {
 		return model.NewAppError("DoPostAction", "api.post.do_action.action_integration.app_error", nil, "err="+err.Error(), http.StatusBadRequest)
 	}
@@ -774,4 +827,125 @@ func (a *App) DoPostAction(postId string, actionId string, userId string) *model
 	}
 
 	return nil
+}
+
+func (a *App) PostListWithProxyAddedToImageURLs(list *model.PostList) *model.PostList {
+	if f := a.ImageProxyAdder(); f != nil {
+		return list.WithRewrittenImageURLs(f)
+	}
+	return list
+}
+
+func (a *App) PostWithProxyAddedToImageURLs(post *model.Post) *model.Post {
+	if f := a.ImageProxyAdder(); f != nil {
+		return post.WithRewrittenImageURLs(f)
+	}
+	return post
+}
+
+func (a *App) PostWithProxyRemovedFromImageURLs(post *model.Post) *model.Post {
+	if f := a.ImageProxyRemover(); f != nil {
+		return post.WithRewrittenImageURLs(f)
+	}
+	return post
+}
+
+func (a *App) PostPatchWithProxyRemovedFromImageURLs(patch *model.PostPatch) *model.PostPatch {
+	if f := a.ImageProxyRemover(); f != nil {
+		return patch.WithRewrittenImageURLs(f)
+	}
+	return patch
+}
+
+func (a *App) imageProxyConfig() (proxyType, proxyURL, options, siteURL string) {
+	cfg := a.Config()
+
+	if cfg.ServiceSettings.ImageProxyURL == nil || cfg.ServiceSettings.ImageProxyType == nil || cfg.ServiceSettings.SiteURL == nil {
+		return
+	}
+
+	proxyURL = *cfg.ServiceSettings.ImageProxyURL
+	proxyType = *cfg.ServiceSettings.ImageProxyType
+	siteURL = *cfg.ServiceSettings.SiteURL
+
+	if proxyURL == "" || proxyType == "" {
+		return "", "", "", ""
+	}
+
+	if proxyURL[len(proxyURL)-1] != '/' {
+		proxyURL += "/"
+	}
+
+	if cfg.ServiceSettings.ImageProxyOptions != nil {
+		options = *cfg.ServiceSettings.ImageProxyOptions
+	}
+
+	return
+}
+
+func (a *App) ImageProxyAdder() func(string) string {
+	proxyType, proxyURL, options, siteURL := a.imageProxyConfig()
+	if proxyType == "" {
+		return nil
+	}
+
+	return func(url string) string {
+		if strings.HasPrefix(url, proxyURL) {
+			return url
+		}
+
+		if url[0] == '/' {
+			url = siteURL + url
+		}
+
+		switch proxyType {
+		case "atmos/camo":
+			mac := hmac.New(sha1.New, []byte(options))
+			mac.Write([]byte(url))
+			digest := hex.EncodeToString(mac.Sum(nil))
+			return proxyURL + digest + "/" + hex.EncodeToString([]byte(url))
+		case "willnorris/imageproxy":
+			options := strings.Split(options, "|")
+			if len(options) > 1 {
+				mac := hmac.New(sha256.New, []byte(options[1]))
+				mac.Write([]byte(url))
+				digest := base64.URLEncoding.EncodeToString(mac.Sum(nil))
+				if options[0] == "" {
+					return proxyURL + "s" + digest + "/" + url
+				}
+				return proxyURL + options[0] + ",s" + digest + "/" + url
+			}
+			return proxyURL + options[0] + "/" + url
+		}
+
+		return url
+	}
+}
+
+func (a *App) ImageProxyRemover() (f func(string) string) {
+	proxyType, proxyURL, _, _ := a.imageProxyConfig()
+	if proxyType == "" {
+		return nil
+	}
+
+	return func(url string) string {
+		switch proxyType {
+		case "atmos/camo":
+			if strings.HasPrefix(url, proxyURL) {
+				if slash := strings.IndexByte(url[len(proxyURL):], '/'); slash >= 0 {
+					if decoded, err := hex.DecodeString(url[len(proxyURL)+slash+1:]); err == nil {
+						return string(decoded)
+					}
+				}
+			}
+		case "willnorris/imageproxy":
+			if strings.HasPrefix(url, proxyURL) {
+				if slash := strings.IndexByte(url[len(proxyURL):], '/'); slash >= 0 {
+					return url[len(proxyURL)+slash+1:]
+				}
+			}
+		}
+
+		return url
+	}
 }

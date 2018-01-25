@@ -15,8 +15,6 @@ import (
 )
 
 func (api *API) InitOAuth() {
-	l4g.Debug(utils.T("api.oauth.init.debug"))
-
 	api.BaseRoutes.OAuthApps.Handle("", api.ApiSessionRequired(createOAuthApp)).Methods("POST")
 	api.BaseRoutes.OAuthApp.Handle("", api.ApiSessionRequired(updateOAuthApp)).Methods("PUT")
 	api.BaseRoutes.OAuthApps.Handle("", api.ApiSessionRequired(getOAuthApps)).Methods("GET")
@@ -100,7 +98,7 @@ func updateOAuthApp(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if c.Session.UserId != oauthApp.CreatorId && !c.App.SessionHasPermissionTo(c.Session, model.PERMISSION_MANAGE_SYSTEM_WIDE_OAUTH) {
+	if c.Session.UserId != oldOauthApp.CreatorId && !c.App.SessionHasPermissionTo(c.Session, model.PERMISSION_MANAGE_SYSTEM_WIDE_OAUTH) {
 		c.SetPermissionError(model.PERMISSION_MANAGE_SYSTEM_WIDE_OAUTH)
 		return
 	}
@@ -561,7 +559,7 @@ func signupWithOAuth(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !c.App.Config().TeamSettings.EnableUserCreation {
-		c.Err = model.NewAppError("signupWithOAuth", "api.oauth.singup_with_oauth.disabled.app_error", nil, "", http.StatusNotImplemented)
+		http.Redirect(w, r, c.GetSiteURLHeader()+"/error?message="+url.QueryEscape(utils.T("api.oauth.singup_with_oauth.disabled.app_error")), http.StatusTemporaryRedirect)
 		return
 	}
 

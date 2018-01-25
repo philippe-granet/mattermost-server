@@ -46,13 +46,20 @@
         "RestrictPostDelete": "all",
         "AllowEditPost": "always",
         "PostEditTimeLimit": 300,
+        "ExperimentalEnableAuthenticationTransfer": true,
         "TimeBetweenUserTypingUpdatesMilliseconds": 5000,
         "EnablePostSearch": true,
         "EnableUserTypingMessages": true,
         "EnableChannelViewedMessages": true,
         "EnableUserStatuses": true,
         "ClusterLogTimeoutMilliseconds": 2000,
-        "EnablePreviewFeatures": true
+        "EnablePreviewFeatures": true,
+        "CloseUnusedDirectMessages": false,
+        "EnableTutorial": true,
+        "ExperimentalEnableDefaultChannelLeaveJoinMessages": true,
+        "ExperimentalGroupUnreadChannels": false,
+        "ImageProxyType": "",
+        "ImageProxyURL": ""
     },
     "TeamSettings": {
         "SiteName": "Mattermost",
@@ -79,7 +86,8 @@
         "MaxNotificationsPerChannel": 1000,
         "EnableConfirmNotificationsToChannel": true,
         "TeammateNameDisplay": "username",
-        "ExperimentalTownSquareIsReadOnly": false
+        "ExperimentalTownSquareIsReadOnly": false,
+        "ExperimentalPrimaryTeam": ""
     },
     "ClientRequirements": {
         "AndroidLatestVersion": "",
@@ -130,7 +138,7 @@
         "AmazonS3AccessKeyId": "",
         "AmazonS3SecretAccessKey": "",
         "AmazonS3Bucket": "",
-        "AmazonS3Region": "us-east-1",
+        "AmazonS3Region": "",
         "AmazonS3Endpoint": "s3.amazonaws.com",
         "AmazonS3SSL": true,
         "AmazonS3SignV2": false,
@@ -142,6 +150,7 @@
         "EnableSignInWithEmail": true,
         "EnableSignInWithUsername": true,
         "SendEmailNotifications": true,
+        "UseChannelInEmailNotifications": false,
         "RequireEmailVerification": false,
         "FeedbackName": "",
         "FeedbackEmail": "test@example.com",
@@ -160,7 +169,10 @@
         "EmailBatchingBufferSize": 256,
         "EmailBatchingInterval": 30,
         "SkipServerCertificateVerification": false,
-        "EmailNotificationContentsType": "full"
+        "EmailNotificationContentsType": "full",
+        "LoginButtonColor": "",
+        "LoginButtonBorderColor": "",
+        "LoginButtonTextColor": ""
     },
     "RateLimitSettings": {
         "Enable": false,
@@ -243,7 +255,10 @@
         "SkipCertificateVerification": false,
         "QueryTimeout": 60,
         "MaxPageSize": 0,
-        "LoginFieldName": ""
+        "LoginFieldName": "",
+        "LoginButtonColor": "",
+        "LoginButtonBorderColor": "",
+        "LoginButtonTextColor": ""
     },
     "ComplianceSettings": {
         "Enable": false,
@@ -273,7 +288,10 @@
         "NicknameAttribute": "",
         "LocaleAttribute": "",
         "PositionAttribute": "",
-        "LoginButtonText": "With SAML"
+        "LoginButtonText": "With SAML",
+        "LoginButtonColor": "",
+        "LoginButtonBorderColor": "",
+        "LoginButtonTextColor": ""
     },
     "NativeAppSettings": {
         "AppDownloadLink": "https://about.mattermost.com/downloads/",
@@ -331,6 +349,13 @@
         "FileRetentionDays": 365,
         "DeletionJobStartTime": "02:00"
     },
+    "MessageExportSettings": {
+        "EnableExport": false,
+        "DailyRunTime": "01:00",
+        "ExportFromTimestamp": 0,
+        "FileLocation": "export",
+        "BatchSize": 10000
+    },
     "JobSettings": {
         "RunJobs": true,
         "RunScheduler": true
@@ -339,6 +364,7 @@
         "Enable": true,
         "EnableUploads": false,
         "Directory": "./plugins",
+        "ClientDirectory": "./client/plugins",
         "Plugins": {},
         "PluginStates": {}
     }

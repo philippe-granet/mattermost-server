@@ -1022,13 +1022,28 @@ func (us SqlUserStore) SearchInChannel(channelId string, term string, options ma
 	})
 }
 
-var escapeUserSearchChar = []string{
+var escapeLikeSearchChar = []string{
 	"%",
 	"_",
 }
 
-var ignoreUserSearchChar = []string{
+var ignoreLikeSearchChar = []string{
 	"*",
+}
+
+var spaceFulltextSearchChar = []string{
+	"<",
+	">",
+	"+",
+	"-",
+	"(",
+	")",
+	"~",
+	":",
+	"*",
+	"\"",
+	"!",
+	"@",
 }
 
 func generateSearchQuery(searchQuery string, terms []string, fields []string, parameters map[string]interface{}, isPostgreSQL bool) string {
@@ -1054,12 +1069,12 @@ func (us SqlUserStore) performSearch(searchQuery string, term string, options ma
 	result := store.StoreResult{}
 
 	// These chars must be removed from the like query.
-	for _, c := range ignoreUserSearchChar {
+	for _, c := range ignoreLikeSearchChar {
 		term = strings.Replace(term, c, "", -1)
 	}
 
 	// These chars must be escaped in the like query.
-	for _, c := range escapeUserSearchChar {
+	for _, c := range escapeLikeSearchChar {
 		term = strings.Replace(term, c, "*"+c, -1)
 	}
 
@@ -1078,7 +1093,7 @@ func (us SqlUserStore) performSearch(searchQuery string, term string, options ma
 		searchQuery = strings.Replace(searchQuery, "INACTIVE_CLAUSE", "AND Users.DeleteAt = 0", 1)
 	}
 
-	if term == "" {
+	if strings.TrimSpace(term) == "" {
 		searchQuery = strings.Replace(searchQuery, "SEARCH_CLAUSE", "", 1)
 	} else {
 		isPostgreSQL := us.DriverName() == model.DATABASE_DRIVER_POSTGRES

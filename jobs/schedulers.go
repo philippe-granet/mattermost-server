@@ -10,7 +10,6 @@ import (
 	l4g "github.com/alecthomas/log4go"
 
 	"github.com/mattermost/mattermost-server/model"
-	"github.com/mattermost/mattermost-server/utils"
 )
 
 type Schedulers struct {
@@ -39,6 +38,10 @@ func (srv *JobServer) InitSchedulers() *Schedulers {
 		schedulers.schedulers = append(schedulers.schedulers, srv.DataRetentionJob.MakeScheduler())
 	}
 
+	if srv.MessageExportJob != nil {
+		schedulers.schedulers = append(schedulers.schedulers, srv.MessageExportJob.MakeScheduler())
+	}
+
 	if elasticsearchAggregatorInterface := srv.ElasticsearchAggregator; elasticsearchAggregatorInterface != nil {
 		schedulers.schedulers = append(schedulers.schedulers, elasticsearchAggregatorInterface.MakeScheduler())
 	}
@@ -52,7 +55,7 @@ func (srv *JobServer) InitSchedulers() *Schedulers {
 }
 
 func (schedulers *Schedulers) Start() *Schedulers {
-	schedulers.listenerId = utils.AddConfigListener(schedulers.handleConfigChange)
+	schedulers.listenerId = schedulers.jobs.ConfigService.AddConfigListener(schedulers.handleConfigChange)
 
 	go func() {
 		schedulers.startOnce.Do(func() {

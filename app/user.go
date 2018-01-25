@@ -778,7 +778,10 @@ func (a *App) SetProfileImage(userId string, imageData *multipart.FileHeader) *m
 		return model.NewAppError("SetProfileImage", "api.user.upload_profile_user.open.app_error", nil, err.Error(), http.StatusBadRequest)
 	}
 	defer file.Close()
+	return a.SetProfileImageFromFile(userId, file)
+}
 
+func (a *App) SetProfileImageFromFile(userId string, file multipart.File) *model.AppError {
 	// Decode image config first to check dimensions before loading the whole thing into memory later on
 	config, _, err := image.DecodeConfig(file)
 	if err != nil {
@@ -969,12 +972,34 @@ func (a *App) PatchUser(userId string, patch *model.UserPatch, asAdmin bool) (*m
 	return updatedUser, nil
 }
 
+func (a *App) UpdateUserAuth(userId string, userAuth *model.UserAuth) (*model.UserAuth, *model.AppError) {
+	if userAuth.AuthData == nil || *userAuth.AuthData == "" || userAuth.AuthService == "" {
+		userAuth.AuthData = nil
+		userAuth.AuthService = ""
+
+		if err := a.IsPasswordValid(userAuth.Password); err != nil {
+			return nil, err
+		}
+		password := model.HashPassword(userAuth.Password)
+
+		if result := <-a.Srv.Store.User().UpdatePassword(userId, password); result.Err != nil {
+			return nil, result.Err
+		}
+	} else {
+		userAuth.Password = ""
+
+		if result := <-a.Srv.Store.User().UpdateAuthData(userId, userAuth.AuthService, userAuth.AuthData, "", false); result.Err != nil {
+			return nil, result.Err
+		}
+	}
+
+	return userAuth, nil
+}
+
 func (a *App) sendUpdatedUserEvent(user model.User, asAdmin bool) {
 	a.SanitizeProfile(&user, asAdmin)
 
-	omitUsers := make(map[string]bool, 1)
-	omitUsers[user.Id] = true
-	message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_USER_UPDATED, "", "", "", omitUsers)
+	message := model.NewWebSocketEvent(model.WEBSOCKET_EVENT_USER_UPDATED, "", "", "", nil)
 	message.Add("user", user)
 	a.Go(func() {
 		a.Publish(message)
