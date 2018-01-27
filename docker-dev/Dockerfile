@@ -24,10 +24,10 @@ RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
     && apt-get -y --no-install-recommends install yarn \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
-#Download and install Go 1.9 for Linux:
-RUN wget https://storage.googleapis.com/golang/go1.9.linux-amd64.tar.gz \
-    && tar -C /usr/local -xzf go1.9.linux-amd64.tar.gz \
-    && rm -f go1.9.linux-amd64.tar.gz
+#Download and install Go 1.9.3 for Linux:
+RUN wget https://storage.googleapis.com/golang/go1.9.3.linux-amd64.tar.gz \
+    && tar -C /usr/local -xzf go1.9.3.linux-amd64.tar.gz \
+    && rm -f go1.9.3.linux-amd64.tar.gz
 
 #Set up your Go workspace
 RUN mkdir -p ~/go \
